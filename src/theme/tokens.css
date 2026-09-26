@@ -1,0 +1,20 @@
+/*
+ * Color tokens. Dark is the only theme for now; a light theme only needs to redefine these
+ * variables (e.g. under [data-theme='light']) with no changes to screens.
+ */
+:root {
+  color-scheme: dark;
+  --bg: #0e1013;
+  --surface: #171a1f;
+  --surface-2: #20242b;
+  --border: #2e333c;
+  --text: #eef0f3;
+  --muted: #a1a9b5;
+  --accent: #6ee7b7;
+  --accent-ink: #062116;
+  --accent-soft: #143b2d;
+  --danger: #f59e94;
+  --gold: #f5c451;
+  --gold-ink: #2b1f00;
+  --neutral: #5b6370;
+}
