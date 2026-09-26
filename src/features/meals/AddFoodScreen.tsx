@@ -2,8 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Sheet } from '../../components/Sheet'
-import { Button, Card, SectionTitle, inputClass } from '../../components/ui'
-import { LookupError, lookupBarcodeOnline, searchPackagedOnline, searchUsda, usdaDisplayName, type PackagedResult } from '../../data/foodSources'
+import { Button, Card, SectionTitle, Segmented, inputClass } from '../../components/ui'
+import { LookupError, loadUsdaFoods, lookupBarcodeOnline, searchPackagedOnline, searchUsda, usdaDisplayName, type PackagedResult } from '../../data/foodSources'
 import { findFoodByBarcode, listFavoriteFoods, listRecentFoods, listSavedMeals, logSavedMeal, searchMyFoods, deleteSavedMeal } from '../../data/repositories/mealRepo'
 import type { FoodRecord } from '../../data/schema'
 import { todayISO } from '../../domain/dates'
@@ -11,6 +11,7 @@ import { type MealType, MEAL_TYPES, type Nutrition, type UsdaFood, defaultServin
 import { vibrate } from '../../lib/alerts'
 import { FoodConfirmSheet, type FoodCandidate } from './FoodConfirmSheet'
 import { ManualFoodSheet } from './ManualFoodSheet'
+import { MacroLine } from './NutritionUi'
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
 
@@ -34,6 +35,17 @@ export function AddFoodScreen() {
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  /**
+   * Saved foods that came from the USDA list reopen as USDA foods (same serving), so they pick
+   * up every nutrient and serving option even if they were saved by an older version.
+   */
+  async function pickSaved(food: FoodRecord) {
+    const match = food.externalId?.match(/^usda:(\d+):([\d.]+)$/)
+    const usda = match ? (await loadUsdaFoods().catch(() => [])).find((u) => u[0] === Number(match[1])) : undefined
+    setOverlay({ kind: 'confirm', candidate: usda ? { kind: 'usda', food: usda, grams: Number(match![2]), isFavorite: food.isFavorite } : { kind: 'saved', food } })
+  }
+  const pick = (c: FoodCandidate) => (c.kind === 'saved' ? void pickSaved(c.food) : setOverlay({ kind: 'confirm', candidate: c }))
+
   const done = () => navigate(`/meals?date=${date}`, { replace: true })
 
   async function handleBarcode(raw: string) {
@@ -43,7 +55,7 @@ export function AddFoodScreen() {
     setBusy(true)
     try {
       const saved = await findFoodByBarcode(raw)
-      if (saved) return setOverlay({ kind: 'confirm', candidate: { kind: 'saved', food: saved } })
+      if (saved) return pickSaved(saved)
       const result = await lookupBarcodeOnline(raw)
       if (result.status === 'found' && result.product?.nutrition) {
         return setOverlay({ kind: 'confirm', candidate: { kind: 'product', product: { ...result.product, nutrition: result.product.nutrition }, barcode: raw } })
@@ -76,7 +88,7 @@ export function AddFoodScreen() {
       <button type="button" onClick={() => navigate(-1)} className="inline-flex min-h-11 items-center text-accent">
         ← Back
       </button>
-      <h1 className="text-2xl font-bold">Add to {mealLabel}</h1>
+      <h1 className="text-[28px] leading-tight font-semibold">Add to {mealLabel}</h1>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Meal">
         {MEAL_TYPES.map((m) => (
           <button
@@ -105,20 +117,22 @@ export function AddFoodScreen() {
         <input className={inputClass} type="search" enterKeyHint="search" placeholder="Search foods, e.g. banana, oatmeal" aria-label="Search foods" value={query} onChange={(e) => setQuery(e.target.value)} />
 
         {query.trim() ? (
-          <SearchResults query={query.trim()} onPick={(candidate) => setOverlay({ kind: 'confirm', candidate })} />
+          <SearchResults query={query.trim()} onPick={pick} />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1" role="tablist">
-              {(['recent', 'favorites'] as const).map((t) => (
-                <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`min-h-11 rounded-lg text-sm ${tab === t ? 'bg-surface font-semibold' : 'text-muted'}`}>
-                  {t === 'recent' ? 'Recent' : 'Favorites'}
-                </button>
-              ))}
-            </div>
+            <Segmented<'recent' | 'favorites'>
+              label="Show"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'recent', label: 'Recent' },
+                { value: 'favorites', label: 'Favorites' },
+              ]}
+            />
             {tab === 'recent' ? (
-              <RecentList onPick={(food) => setOverlay({ kind: 'confirm', candidate: { kind: 'saved', food } })} />
+              <RecentList onPick={(food) => void pickSaved(food)} />
             ) : (
-              <FavoritesList meal={meal} date={date} onLoggedMeal={done} onPick={(food) => setOverlay({ kind: 'confirm', candidate: { kind: 'saved', food } })} />
+              <FavoritesList meal={meal} date={date} onLoggedMeal={done} onPick={(food) => void pickSaved(food)} />
             )}
           </>
         )}
@@ -195,7 +209,7 @@ function SearchResults({ query, onPick }: { query: string; onPick: (c: FoodCandi
       {mine && mine.length > 0 && (
         <section className="flex flex-col gap-2">
           <SectionTitle>Your foods</SectionTitle>
-          <FoodList items={mine.map((f) => ({ key: f.id, name: f.name, detail: f.servingSize, calories: f.calories, star: f.isFavorite, onClick: () => onPick({ kind: 'saved', food: f }) }))} />
+          <FoodList items={mine.map((f) => ({ key: f.id, name: f.name, detail: f.servingSize, nutrition: f, star: f.isFavorite, onClick: () => onPick({ kind: 'saved', food: f }) }))} />
         </section>
       )}
 
@@ -212,7 +226,7 @@ function SearchResults({ query, onPick }: { query: string; onPick: (c: FoodCandi
             items={usda.map((f) => {
               const options = usdaServingOptions(f)
               const serving = options[defaultServingIndex(options)]
-              return { key: String(f[0]), name: usdaDisplayName(f), detail: serving.label, calories: nutritionForGrams(usdaPer100g(f), serving.grams).calories, onClick: () => onPick({ kind: 'usda', food: f }) }
+              return { key: String(f[0]), name: usdaDisplayName(f), detail: serving.label, nutrition: nutritionForGrams(usdaPer100g(f), serving.grams), onClick: () => onPick({ kind: 'usda', food: f }) }
             })}
           />
         )}
@@ -226,7 +240,7 @@ function SearchResults({ query, onPick }: { query: string; onPick: (c: FoodCandi
               key: p.barcode,
               name: p.name,
               detail: p.servingSize,
-              calories: p.nutrition!.calories,
+              nutrition: p.nutrition as Nutrition,
               onClick: () => onPick({ kind: 'product', product: { ...p, nutrition: p.nutrition as Nutrition }, barcode: p.barcode }),
             }))}
           />
@@ -246,7 +260,7 @@ function RecentList({ onPick }: { onPick: (f: FoodRecord) => void }) {
   const recent = useLiveQuery(() => listRecentFoods())
   if (!recent) return null
   if (recent.length === 0) return <Card><p className="text-muted">Foods you log will appear here for one-tap re-logging.</p></Card>
-  return <FoodList items={recent.map((f) => ({ key: f.id, name: f.name, detail: f.servingSize, calories: f.calories, star: f.isFavorite, onClick: () => onPick(f) }))} />
+  return <FoodList items={recent.map((f) => ({ key: f.id, name: f.name, detail: f.servingSize, nutrition: f, star: f.isFavorite, onClick: () => onPick(f) }))} />
 }
 
 function FavoritesList({ meal, date, onPick, onLoggedMeal }: { meal: MealType; date: string; onPick: (f: FoodRecord) => void; onLoggedMeal: () => void }) {
@@ -270,7 +284,7 @@ function FavoritesList({ meal, date, onPick, onLoggedMeal }: { meal: MealType; d
                     await logSavedMeal(m.id, date, meal)
                     onLoggedMeal()
                   }}
-                  className="flex min-h-14 flex-1 flex-col justify-center rounded-xl border border-border bg-surface px-4 py-2 text-left hover:bg-surface-2"
+                  className="flex min-h-14 flex-1 flex-col justify-center rounded-2xl bg-surface ring-1 ring-border ring-inset px-4 py-2 text-left hover:bg-surface-2"
                 >
                   <span className="font-medium">{m.name}</span>
                   <span className="text-sm text-muted">
@@ -288,27 +302,30 @@ function FavoritesList({ meal, date, onPick, onLoggedMeal }: { meal: MealType; d
       {foods.length > 0 && (
         <section className="flex flex-col gap-2">
           <SectionTitle>Foods</SectionTitle>
-          <FoodList items={foods.map((f) => ({ key: f.id, name: f.name, detail: f.servingSize, calories: f.calories, star: true, onClick: () => onPick(f) }))} />
+          <FoodList items={foods.map((f) => ({ key: f.id, name: f.name, detail: f.servingSize, nutrition: f, star: true, onClick: () => onPick(f) }))} />
         </section>
       )}
     </div>
   )
 }
 
-function FoodList({ items }: { items: { key: string; name: string; detail: string; calories: number; star?: boolean; onClick: () => void }[] }) {
+function FoodList({ items }: { items: { key: string; name: string; detail: string; nutrition: Nutrition; star?: boolean; onClick: () => void }[] }) {
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="divide-y divide-border overflow-hidden rounded-[20px] bg-surface ring-1 ring-border ring-inset">
       {items.map((i) => (
         <li key={i.key}>
-          <button type="button" onClick={i.onClick} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-2 text-left hover:bg-surface-2">
+          <button type="button" onClick={i.onClick} className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition hover:bg-surface-2">
             <span className="min-w-0">
-              <span className="block truncate font-medium">
-                {i.star && <span className="mr-1 text-gold" aria-label="Favorite">★</span>}
+              <span className="block truncate text-[15px]">
+                {i.star && <span className="mr-1.5 text-gold" aria-label="Favorite">★</span>}
                 {i.name}
               </span>
-              <span className="block truncate text-sm text-muted">{i.detail}</span>
+              <span className="mt-0.5 block truncate text-[13px] text-subtle">{i.detail}</span>
+              <MacroLine n={i.nutrition} className="mt-1" />
             </span>
-            <span className="shrink-0 text-sm tabular-nums text-muted">{formatCalories(i.calories)} cal</span>
+            <span className="shrink-0 pt-0.5 text-right text-[15px] tabular-nums">
+              {formatCalories(i.nutrition.calories)} <span className="text-[12px] text-muted">cal</span>
+            </span>
           </button>
         </li>
       ))}

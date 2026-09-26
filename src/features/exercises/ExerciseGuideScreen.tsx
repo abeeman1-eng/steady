@@ -1,5 +1,5 @@
-import { Link, useSearchParams } from 'react-router-dom'
-import { Card, Screen, SectionTitle, inputClass } from '../../components/ui'
+import { useSearchParams } from 'react-router-dom'
+import { Card, ListGroup, ListRow, Screen, SectionTitle, inputClass } from '../../components/ui'
 import { EXERCISE_LIBRARY } from '../../domain/exerciseLibrary'
 import { MUSCLE_LABELS, searchExercises } from '../../domain/exerciseSearch'
 import type { ExerciseDef, MovementPattern } from '../../domain/types'
@@ -58,20 +58,10 @@ export function ExerciseGuideScreen() {
 
 function ExerciseLinks({ items }: { items: ExerciseDef[] }) {
   return (
-    <ul className="flex flex-col gap-2">
+    <ListGroup>
       {items.map((e) => (
-        <li key={e.id}>
-          <Link to={`/exercises/${e.id}`} className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 hover:bg-surface-2">
-            <span>
-              <span className="block font-medium">{e.name}</span>
-              <span className="block text-sm text-muted">{e.muscleGroups.map((m) => MUSCLE_LABELS[m].name).join(', ')}</span>
-            </span>
-            <span aria-hidden className="text-muted">
-              ›
-            </span>
-          </Link>
-        </li>
+        <ListRow key={e.id} title={e.name} subtitle={e.muscleGroups.map((m) => MUSCLE_LABELS[m].name).join(', ')} to={`/exercises/${e.id}`} />
       ))}
-    </ul>
+    </ListGroup>
   )
 }

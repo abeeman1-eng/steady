@@ -1,10 +1,11 @@
-import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser'
-import { BarcodeFormat, DecodeHintType } from '@zxing/library'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui'
-import { expandUpcE } from '../../domain/nutrition'
+import { type ScanSession, startScanning } from './scanEngine'
 
 type Stage = 'checking' | 'explain' | 'scanning' | 'denied' | 'unsupported'
+
+/** Show distance/lighting tips if nothing has been read after this long. */
+const TIP_AFTER_MS = 8000
 
 /**
  * Full-screen rear-camera barcode scanner (EAN-13, EAN-8, UPC-A, UPC-E). Explains the camera
@@ -13,6 +14,8 @@ type Stage = 'checking' | 'explain' | 'scanning' | 'denied' | 'unsupported'
  */
 export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: { onDetected: (code: string) => void; onTypeInstead: () => void; onClose: () => void }) {
   const [stage, setStage] = useState<Stage>(() => (!navigator.mediaDevices?.getUserMedia ? 'unsupported' : typeof navigator.permissions?.query === 'function' ? 'checking' : 'explain'))
+  const [mirrored, setMirrored] = useState(false)
+  const [struggling, setStruggling] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
   // Held in a ref so a new callback from the parent doesn't restart the camera.
@@ -38,21 +41,16 @@ export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: {
 
   useEffect(() => {
     if (stage !== 'scanning' || !videoRef.current) return
-    let controls: IScannerControls | undefined
+    let session: ScanSession | undefined
     let cancelled = false
-    const hints = new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E]]])
-    const reader = new BrowserMultiFormatReader(hints)
-    reader
-      .decodeFromConstraints({ video: { facingMode: { ideal: 'environment' } }, audio: false }, videoRef.current, (result, _err, c) => {
-        if (!result || cancelled) return
-        cancelled = true
-        c.stop()
-        const text = result.getText()
-        onDetectedRef.current(result.getBarcodeFormat() === BarcodeFormat.UPC_E ? expandUpcE(text) : text)
-      })
-      .then((c) => {
-        controls = c
-        if (cancelled) c.stop()
+    const tipTimer = setTimeout(() => setStruggling(true), TIP_AFTER_MS)
+    startScanning(videoRef.current, (code) => {
+      if (!cancelled) onDetectedRef.current(code)
+    })
+      .then((s) => {
+        session = s
+        if (cancelled) s.stop()
+        else setMirrored(s.mirrored)
       })
       .catch((e: unknown) => {
         const name = e instanceof DOMException ? e.name : ''
@@ -60,7 +58,8 @@ export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: {
       })
     return () => {
       cancelled = true
-      controls?.stop()
+      clearTimeout(tipTimer)
+      session?.stop()
     }
   }, [stage])
 
@@ -76,13 +75,20 @@ export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: {
 
         {stage === 'scanning' ? (
           <>
-            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
+            {/* Front cameras are mirrored so moving the product feels natural; decoding uses the raw frames. */}
+            <video ref={videoRef} className={`h-full w-full object-cover ${mirrored ? '-scale-x-100' : ''}`} muted playsInline />
             <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="h-40 w-72 max-w-[80vw] rounded-2xl border-4 border-accent shadow-[0_0_0_100vmax_rgba(0,0,0,0.45)]" />
             </div>
-            <p className="absolute inset-x-0 bottom-28 text-center text-sm" role="status">
-              Line the barcode up inside the box
-            </p>
+            <div className="absolute inset-x-4 bottom-24 mx-auto max-w-md text-center" role="status">
+              {struggling ? (
+                <p className="rounded-xl bg-black/70 p-3 text-sm">
+                  Not reading? Hold the barcode flat and still, about 6–8 inches (15–20 cm) away, in good light. Laptop cameras often can’t focus on small barcodes. Typing the number always works.
+                </p>
+              ) : (
+                <p className="text-sm">Line the barcode up inside the box</p>
+              )}
+            </div>
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
@@ -109,7 +115,7 @@ export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: {
         )}
 
         <div className="absolute inset-x-0 bottom-0 flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <button type="button" onClick={onTypeInstead} className="min-h-11 rounded-xl bg-black/50 px-4 text-accent underline">
+          <button type="button" onClick={onTypeInstead} className={`min-h-11 rounded-xl px-4 ${struggling ? 'bg-accent font-semibold text-accent-ink' : 'bg-black/50 text-accent underline'}`}>
             Type barcode instead
           </button>
         </div>

@@ -3,6 +3,36 @@ export interface Nutrition {
   proteinG: number
   carbsG: number
   fatG: number
+  /** Extras are optional: undefined means the source didn't list it (shown as "–", not 0). */
+  fiberG?: number
+  sugarG?: number
+  satFatG?: number
+  sodiumMg?: number
+}
+
+export const EXTRA_KEYS = ['fiberG', 'sugarG', 'satFatG', 'sodiumMg'] as const
+export type ExtraKey = (typeof EXTRA_KEYS)[number]
+export const NUTRIENT_KEYS = ['calories', 'proteinG', 'carbsG', 'fatG', ...EXTRA_KEYS] as const
+export type NutrientKey = (typeof NUTRIENT_KEYS)[number]
+
+/** Display metadata for every tracked nutrient. `limit` nutrients are ceilings, not goals. */
+export const NUTRIENTS: Record<NutrientKey, { label: string; short: string; unit: 'kcal' | 'g' | 'mg'; limit?: boolean }> = {
+  calories: { label: 'Calories', short: 'Cal', unit: 'kcal' },
+  proteinG: { label: 'Protein', short: 'P', unit: 'g' },
+  carbsG: { label: 'Carbs', short: 'C', unit: 'g' },
+  fatG: { label: 'Fat', short: 'F', unit: 'g' },
+  fiberG: { label: 'Fiber', short: 'Fiber', unit: 'g' },
+  sugarG: { label: 'Sugar', short: 'Sugar', unit: 'g', limit: true },
+  satFatG: { label: 'Saturated fat', short: 'Sat fat', unit: 'g', limit: true },
+  sodiumMg: { label: 'Sodium', short: 'Sodium', unit: 'mg', limit: true },
+}
+
+export function formatNutrient(key: NutrientKey, value: number | undefined): string {
+  if (value === undefined) return '–'
+  const unit = NUTRIENTS[key].unit
+  if (unit === 'kcal') return formatCalories(value)
+  if (unit === 'mg') return `${Math.round(value)} mg`
+  return formatGrams(value)
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snacks'
@@ -25,15 +55,35 @@ export function mealForTime(now = new Date()): MealType {
 
 export const ZERO: Nutrition = { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
 
-export function scaleNutrition(n: Nutrition, factor: number): Nutrition {
-  return { calories: n.calories * factor, proteinG: n.proteinG * factor, carbsG: n.carbsG * factor, fatG: n.fatG * factor }
+/** Just the nutrition fields of a record (entries and foods carry other fields too). */
+export function pickNutrition(n: Nutrition): Nutrition {
+  const out: Nutrition = { calories: n.calories, proteinG: n.proteinG, carbsG: n.carbsG, fatG: n.fatG }
+  for (const k of EXTRA_KEYS) if (typeof n[k] === 'number') out[k] = n[k]
+  return out
 }
 
+export function scaleNutrition(n: Nutrition, factor: number): Nutrition {
+  const out: Nutrition = { calories: n.calories * factor, proteinG: n.proteinG * factor, carbsG: n.carbsG * factor, fatG: n.fatG * factor }
+  for (const k of EXTRA_KEYS) if (typeof n[k] === 'number') out[k] = n[k]! * factor
+  return out
+}
+
+/** Totals. An extra is included once any item lists it; items that don't list it add nothing. */
 export function sumNutrition(items: Nutrition[]): Nutrition {
-  return items.reduce(
-    (acc, n) => ({ calories: acc.calories + n.calories, proteinG: acc.proteinG + n.proteinG, carbsG: acc.carbsG + n.carbsG, fatG: acc.fatG + n.fatG }),
-    ZERO,
-  )
+  const out: Nutrition = { ...ZERO }
+  for (const n of items) {
+    out.calories += n.calories
+    out.proteinG += n.proteinG
+    out.carbsG += n.carbsG
+    out.fatG += n.fatG
+    for (const k of EXTRA_KEYS) if (typeof n[k] === 'number') out[k] = (out[k] ?? 0) + n[k]!
+  }
+  return out
+}
+
+/** How many items don't list each extra, for an honest "some foods don't list fiber" note. */
+export function countMissingExtras(items: Nutrition[]): Record<ExtraKey, number> {
+  return Object.fromEntries(EXTRA_KEYS.map((k) => [k, items.filter((n) => typeof n[k] !== 'number').length])) as Record<ExtraKey, number>
 }
 
 /** Whole calories, grams to one decimal place under 10 and whole above. */
@@ -46,7 +96,19 @@ export const formatServings = (n: number) => String(Math.round(n * 100) / 100)
 // ----- USDA built-in list -----
 
 /** Compact row from usdaFoods.json: nutrition is per 100 g; portions are [label, grams]. */
-export type UsdaFood = [fdcId: number, name: string, kcal: number, protein: number, carbs: number, fat: number, portions: [string, number][]]
+export type UsdaFood = [
+  fdcId: number,
+  name: string,
+  kcal: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+  fiber: number | null,
+  sugar: number | null,
+  satFat: number | null,
+  sodiumMg: number | null,
+  portions: [string, number][],
+]
 
 export interface ServingOption {
   label: string
@@ -54,12 +116,17 @@ export interface ServingOption {
 }
 
 export function usdaPer100g(food: UsdaFood): Nutrition {
-  return { calories: food[2], proteinG: food[3], carbsG: food[4], fatG: food[5] }
+  const n: Nutrition = { calories: food[2], proteinG: food[3], carbsG: food[4], fatG: food[5] }
+  if (food[6] !== null) n.fiberG = food[6]
+  if (food[7] !== null) n.sugarG = food[7]
+  if (food[8] !== null) n.satFatG = food[8]
+  if (food[9] !== null) n.sodiumMg = food[9]
+  return n
 }
 
 /** Household measures from USDA, then 100 g, then 1 oz, e.g. "1 medium (118 g)". */
 export function usdaServingOptions(food: UsdaFood): ServingOption[] {
-  const household = food[6].map(([label, grams]) => ({ label: `${label} (${formatGrams(grams).replace(' g', '')} g)`, grams }))
+  const household = food[10].map(([label, grams]) => ({ label: `${label} (${formatGrams(grams).replace(' g', '')} g)`, grams }))
   return [...household, { label: '100 g', grams: 100 }, { label: '1 oz (28 g)', grams: 28.35 }]
 }
 
@@ -134,7 +201,16 @@ export function parseOffProduct(product: Record<string, unknown> | undefined | n
   const pick = (suffix: 'serving' | '100g'): Nutrition | null => {
     const calories = num(nm[`energy-kcal_${suffix}`]) ?? (num(nm[`energy_${suffix}`]) !== undefined ? num(nm[`energy_${suffix}`])! / 4.184 : undefined)
     if (calories === undefined) return null
-    return { calories, proteinG: num(nm[`proteins_${suffix}`]) ?? 0, carbsG: num(nm[`carbohydrates_${suffix}`]) ?? 0, fatG: num(nm[`fat_${suffix}`]) ?? 0 }
+    const n: Nutrition = { calories, proteinG: num(nm[`proteins_${suffix}`]) ?? 0, carbsG: num(nm[`carbohydrates_${suffix}`]) ?? 0, fatG: num(nm[`fat_${suffix}`]) ?? 0 }
+    const fiber = num(nm[`fiber_${suffix}`])
+    const sugar = num(nm[`sugars_${suffix}`])
+    const satFat = num(nm[`saturated-fat_${suffix}`])
+    const sodiumG = num(nm[`sodium_${suffix}`]) // Open Food Facts stores sodium in grams
+    if (fiber !== undefined) n.fiberG = fiber
+    if (sugar !== undefined) n.sugarG = sugar
+    if (satFat !== undefined) n.satFatG = satFat
+    if (sodiumG !== undefined) n.sodiumMg = sodiumG * 1000
+    return n
   }
 
   const servingLabel = typeof product.serving_size === 'string' && product.serving_size.trim() ? product.serving_size.trim() : null

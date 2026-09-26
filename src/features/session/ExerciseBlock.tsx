@@ -43,7 +43,7 @@ export function ExerciseBlock({
             ⋯
           </button>
           {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-surface-2 shadow-lg">
+            <div className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-[14px] bg-surface-2 ring-1 ring-border ring-inset shadow-lg">
               <button type="button" className="block min-h-11 w-full px-4 text-left hover:bg-border" onClick={() => (setMenuOpen(false), onSwap())}>
                 Swap exercise
               </button>
@@ -126,7 +126,7 @@ function SetRow({ set, units, bodyweight, onCompleted }: { set: SetRecord; units
     }
   }
 
-  const inputBase = 'min-h-11 w-full rounded-lg border bg-surface-2 px-2 text-center text-lg tabular-nums focus:border-accent focus:outline-none'
+  const inputBase = 'min-h-11 w-full rounded-lg border bg-surface-2 px-2 text-center text-lg tabular-nums focus:ring-2 focus:ring-accent focus:outline-none'
 
   return (
     <li className={`grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 rounded-lg py-1 ${set.completed ? 'opacity-90' : ''}`}>

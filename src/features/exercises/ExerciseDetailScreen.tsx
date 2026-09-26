@@ -31,7 +31,7 @@ export function ExerciseDetailScreen() {
       <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/exercises'))} className="inline-flex min-h-11 items-center text-accent">
         ← Back
       </button>
-      <h1 className="text-2xl font-bold">{exercise.name}</h1>
+      <h1 className="text-[28px] leading-tight font-semibold">{exercise.name}</h1>
       <p className="mt-1 text-muted">{exercise.description}</p>
       <ul className="mt-3 flex flex-wrap gap-2 text-sm" aria-label="Details">
         <li className="rounded-full bg-surface-2 px-3 py-1">{DIFFICULTY_LABEL[exercise.difficulty]}</li>
@@ -94,7 +94,7 @@ export function ExerciseDetailScreen() {
             <ul className="flex flex-col gap-2">
               {alternatives.map((a) => (
                 <li key={a.id}>
-                  <Link to={`/exercises/${a.id}`} replace className="flex min-h-12 items-center justify-between rounded-xl border border-border bg-surface px-4 hover:bg-surface-2">
+                  <Link to={`/exercises/${a.id}`} replace className="flex min-h-12 items-center justify-between rounded-2xl bg-surface ring-1 ring-border ring-inset px-4 hover:bg-surface-2">
                     <span>{a.name}</span>
                     <span className="text-sm text-muted">{a.equipment.map((e) => EQUIPMENT_LABELS[e]).join(', ')}</span>
                   </Link>

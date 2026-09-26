@@ -1,12 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Card, ChoiceList, Field, SectionTitle, Screen, Toggle, inputClass } from '../../components/ui'
+import { Button, Card, ChoiceList, Field, ListGroup, ListRow, SectionTitle, Screen, Toggle, inputClass } from '../../components/ui'
 import { BackupError, downloadBackup, importBackup, parseBackup, requestPersistentStorage } from '../../data/backup'
 import { addBodyWeight, getLatestBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { formatDate, todayISO } from '../../domain/dates'
-import type { Nutrition } from '../../domain/nutrition'
 import type { Units } from '../../domain/types'
 import { formatHeight, formatWeight, fromDisplayWeight, weightUnitLabel } from '../../domain/units'
 import { EQUIPMENT_LABELS, experienceLabel, goalLabel } from '../../lib/labels'
@@ -40,7 +39,7 @@ export function SettingsScreen() {
               </>
             )}
           </dl>
-          <Link to="/onboarding?edit=1" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-surface-2 px-4 hover:bg-border">
+          <Link to="/onboarding?edit=1" className="inline-flex min-h-12 items-center justify-center rounded-[14px] bg-surface-3 px-4 text-[15px] font-semibold hover:bg-border-strong">
             Change answers and regenerate plan
           </Link>
         </Card>
@@ -103,70 +102,25 @@ export function SettingsScreen() {
   )
 }
 
-const TARGET_FIELDS: { key: keyof Nutrition; label: string }[] = [
-  { key: 'calories', label: 'Calories' },
-  { key: 'proteinG', label: 'Protein (g)' },
-  { key: 'carbsG', label: 'Carbs (g)' },
-  { key: 'fatG', label: 'Fat (g)' },
-]
-
 function MealsSection() {
   const profile = useProfile()
   const enabled = profile.showMeals !== false
-  const initial = () => Object.fromEntries(TARGET_FIELDS.map((f) => [f.key, profile.nutritionTargets?.[f.key]?.toString() ?? ''])) as Record<keyof Nutrition, string>
-  const [targets, setTargets] = useState(initial)
-  const [saved, setSaved] = useState(false)
-  const dirty = TARGET_FIELDS.some((f) => targets[f.key] !== (profile.nutritionTargets?.[f.key]?.toString() ?? ''))
-
+  const t = profile.nutritionTargets
+  const summary = t && Object.keys(t).length
+    ? [t.calories && `${Math.round(t.calories).toLocaleString()} cal`, t.proteinG && `${Math.round(t.proteinG)} g protein`].filter(Boolean).join(' · ') || `${Object.keys(t).length} set`
+    : 'Not set'
   return (
-    <Card className="flex flex-col gap-4">
-      <Toggle label="Meal tracking" description="Show food logging on the Today screen" checked={enabled} onChange={(showMeals) => updateProfile({ showMeals })} />
+    <div className="flex flex-col gap-2">
+      <Card className="!py-3">
+        <Toggle label="Meal tracking" description="Show food logging on the Today screen" checked={enabled} onChange={(showMeals) => updateProfile({ showMeals })} />
+      </Card>
       {enabled && (
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            const parsed: Partial<Nutrition> = {}
-            for (const f of TARGET_FIELDS) {
-              const n = parseFloat(targets[f.key])
-              if (Number.isFinite(n) && n > 0) parsed[f.key] = n
-            }
-            await updateProfile({ nutritionTargets: Object.keys(parsed).length ? parsed : undefined })
-            setSaved(true)
-          }}
-        >
-          <div>
-            <p>Daily targets (optional)</p>
-            <p className="text-sm text-muted">Set any you want to track. Leave blank to just see totals. Steady never sets these for you.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {TARGET_FIELDS.map((f) => (
-              <Field key={f.key} label={f.label}>
-                <input
-                  className={inputClass}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={targets[f.key]}
-                  onChange={(e) => {
-                    setTargets((t) => ({ ...t, [f.key]: e.target.value }))
-                    setSaved(false)
-                  }}
-                />
-              </Field>
-            ))}
-          </div>
-          <Button type="submit" variant="secondary" disabled={!dirty}>
-            Save targets
-          </Button>
-          {saved && !dirty && (
-            <p role="status" className="text-sm text-accent">
-              Saved
-            </p>
-          )}
-        </form>
+        <ListGroup>
+          <ListRow title="Daily targets" subtitle={summary} to="/meals/targets" />
+          <ListRow title="Food log" subtitle="Today’s meals and totals" to="/meals" />
+        </ListGroup>
       )}
-    </Card>
+    </div>
   )
 }
 

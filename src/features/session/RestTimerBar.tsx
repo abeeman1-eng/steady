@@ -15,7 +15,7 @@ export function RestTimerBar({ timer }: { timer: ReturnType<typeof useRestTimer>
           <>
             <div className="flex-1">
               <p className="text-xs text-muted">Rest</p>
-              <p className="text-2xl font-bold tabular-nums">{formatDuration(timer.remainingSec)}</p>
+              <p className="text-2xl font-semibold tabular-nums">{formatDuration(timer.remainingSec)}</p>
             </div>
             <button type="button" onClick={() => timer.adjust(-15)} className="min-h-11 min-w-11 rounded-xl bg-surface-2 px-3" aria-label="15 seconds less">
               −15

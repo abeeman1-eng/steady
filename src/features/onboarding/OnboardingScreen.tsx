@@ -232,7 +232,7 @@ function Question({ title, hint, children }: { title: string; hint?: string; chi
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <h1 className="text-[28px] leading-tight font-semibold">{title}</h1>
         {hint && <p className="mt-1 text-muted">{hint}</p>}
       </div>
       {children}

@@ -13,7 +13,7 @@ const SOURCE_URL = 'https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_le
 const CACHE = join(ROOT, '.cache', 'sr_legacy.zip')
 const OUT = join(ROOT, 'src', 'data', 'seed', 'usdaFoods.json')
 
-const NUTRIENTS = { kcal: '1008', protein: '1003', fat: '1004', carbs: '1005' }
+const NUTRIENTS = { kcal: '1008', protein: '1003', fat: '1004', carbs: '1005', fiber: '1079', sugar: '2000', satFat: '1258', sodium: '1093' }
 const MAX_PORTIONS = 8
 
 async function download() {
@@ -102,7 +102,8 @@ for (const p of portions.sort((a, b) => Number(a.seq_num) - Number(b.seq_num))) 
   portionsById.set(p.fdc_id, list)
 }
 
-// Compact rows: [fdcId, name, kcal, protein, carbs, fat, portions]; nutrition is per 100 g.
+// Compact rows: [fdcId, name, kcal, protein, carbs, fat, fiber, sugar, satFat, sodiumMg, portions];
+// nutrition is per 100 g.
 const out = []
 for (const f of foods) {
   const n = nutritionById.get(f.fdc_id)
@@ -114,6 +115,11 @@ for (const f of foods) {
     round1(n[NUTRIENTS.protein] ?? 0),
     round1(n[NUTRIENTS.carbs] ?? 0),
     round1(n[NUTRIENTS.fat] ?? 0),
+    // Extras are null when USDA has no value, so the app can say "not listed" instead of 0.
+    n[NUTRIENTS.fiber] === undefined ? null : round1(n[NUTRIENTS.fiber]),
+    n[NUTRIENTS.sugar] === undefined ? null : round1(n[NUTRIENTS.sugar]),
+    n[NUTRIENTS.satFat] === undefined ? null : round1(n[NUTRIENTS.satFat]),
+    n[NUTRIENTS.sodium] === undefined ? null : Math.round(n[NUTRIENTS.sodium]),
     portionsById.get(f.fdc_id) ?? [],
   ])
 }

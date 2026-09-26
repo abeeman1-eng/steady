@@ -28,7 +28,7 @@ export function WorkoutDetailScreen() {
       <Link to="/history" className="inline-flex min-h-11 items-center text-accent">
         ← History
       </Link>
-      <h1 className="text-2xl font-bold">{workout.name}</h1>
+      <h1 className="text-[28px] leading-tight font-semibold">{workout.name}</h1>
       <p className="mb-4 text-muted">{formatDate(workout.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
 
       <div className="flex flex-col gap-3">

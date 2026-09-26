@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
-import { Card, Screen } from '../../components/ui'
+import { Card, ListGroup, ListRow, Screen } from '../../components/ui'
 import { getActivePlan } from '../../data/repositories/planRepo'
 import { formatDate } from '../../domain/dates'
 import { PlanPreview } from '../onboarding/PlanPreview'
@@ -17,13 +17,9 @@ export function PlanScreen() {
         </Link>
       }
     >
-      <Link to="/exercises" className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 hover:bg-surface-2">
-        <span>
-          <span className="block font-semibold">Exercise guide</span>
-          <span className="block text-sm text-muted">Look up any exercise: step-by-step form and muscles worked</span>
-        </span>
-        <span aria-hidden className="text-muted">›</span>
-      </Link>
+      <ListGroup>
+        <ListRow title="Exercise guide" subtitle="Step-by-step form and muscles worked" to="/exercises" />
+      </ListGroup>
       {plan === null && (
         <Card>
           <p className="text-muted">No active plan.</p>

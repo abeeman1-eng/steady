@@ -65,6 +65,12 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 - **Whole foods** come from USDA FoodData Central's SR Legacy dataset (public domain), built into the app so search works offline with no API key. Regenerate with `npm run build:foods` (downloads a 6 MB zip into `.cache/`).
 - **Packaged foods** come from [Open Food Facts](https://world.openfoodfacts.org) (ODbL) by barcode. Its text search is best-effort: the browser-accessible search endpoints are currently blocked or down, so the app says so and points to scanning.
 - Logged entries copy the food's name and nutrition, so editing a food never rewrites past days.
+- Tracked nutrients: calories, protein, carbs, fat, plus fiber, sugar, saturated fat and sodium. Extras a source doesn't list are stored as missing (shown "–"), never as 0.
+- **Suggested targets** (`src/domain/targets.ts`) use Mifflin-St Jeor with an activity factor, a goal adjustment (−15% for weight loss, +5% for strength), a 1,200 kcal / resting-energy floor, protein at 1.2–1.6 g/kg of a BMI-25-capped reference weight, fat at 30%, carbs as the remainder, fiber at 14 g per 1,000 kcal, and limits for sugar and saturated fat (10% of calories) and sodium (2,300 mg). The user reviews and edits every value; nothing is applied automatically.
+
+### Design
+
+Dark theme built on color tokens in `src/theme/tokens.css` and a small component set in `src/components/ui.tsx` (grouped lists, segmented control, ring and meter). Inter is self-hosted so it works offline. Macro colors are data-viz categorical slots validated for contrast and color-vision deficiency on the app's surface, and always appear next to a text label.
 
 ## Deploying
 

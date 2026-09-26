@@ -1,5 +1,6 @@
 import type { MealType, Nutrition } from '../domain/nutrition'
 import type { PRKind } from '../domain/records'
+import type { ActivityLevel, Sex } from '../domain/targets'
 import type { Build, Equipment, ExerciseDef, ExperienceLevel, MainGoal, SessionTargets, SessionTemplate, Units } from '../domain/types'
 
 /**
@@ -39,6 +40,13 @@ export interface ProfileRecord extends BaseRecord {
   showMeals?: boolean
   /** Optional daily targets the user sets; the app never sets them. */
   nutritionTargets?: Partial<Nutrition>
+  /** Weight the targets were last set from, to suggest a review when it changes. */
+  nutritionTargetsBasis?: { weightKg: number; setAt: string }
+  /** Only used to suggest nutrition targets. */
+  sex?: Sex
+  /** Stored instead of age so it stays current. */
+  birthYear?: number
+  activityLevel?: ActivityLevel
 }
 
 export type ExerciseRecord = ExerciseDef & BaseRecord

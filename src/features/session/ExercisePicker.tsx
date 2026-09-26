@@ -78,7 +78,7 @@ function ExerciseList({ items, onPick }: { items: ExerciseDef[]; onPick: (id: st
     <ul className="flex flex-col gap-2">
       {items.map((e) => (
         <li key={e.id}>
-          <button type="button" onClick={() => onPick(e.id)} className="w-full rounded-xl border border-border bg-surface p-3 text-left hover:bg-surface-2">
+          <button type="button" onClick={() => onPick(e.id)} className="w-full rounded-2xl bg-surface ring-1 ring-border ring-inset p-3 text-left hover:bg-surface-2">
             <span className="block font-medium">{e.name}</span>
             <span className="block text-sm text-muted">
               {e.equipment.map((q) => EQUIPMENT_LABEL[q]).join(', ')} · {e.muscleGroups.join(', ')}

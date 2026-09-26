@@ -18,18 +18,19 @@ export function Sheet({ title, onClose, children, full = false }: { title: strin
       aria-label={title}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className={`m-0 mt-auto w-full max-w-none bg-surface p-0 text-text backdrop:bg-black/60 sm:m-auto sm:max-w-lg sm:rounded-2xl ${
-        full ? 'h-dvh max-h-none sm:h-[85dvh]' : 'max-h-[90dvh] rounded-t-2xl'
+      className={`m-0 mt-auto w-full max-w-none bg-surface p-0 text-text ring-1 ring-border backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:m-auto sm:max-w-lg sm:rounded-[24px] ${
+        full ? 'h-dvh max-h-none sm:h-[85dvh]' : 'max-h-[90dvh] rounded-t-[24px]'
       }`}
     >
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-3 text-accent">
+        {!full && <div aria-hidden className="mx-auto mt-2 h-1 w-9 rounded-full bg-border-strong sm:hidden" />}
+        <div className="flex items-center justify-between gap-2 px-5 pt-2 pb-1">
+          <h2 className="text-[17px] font-semibold">{title}</h2>
+          <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-2 text-[15px] font-medium text-accent">
             Close
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>
+        <div className="flex-1 overflow-y-auto px-5 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
     </dialog>
   )

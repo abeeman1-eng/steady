@@ -20,26 +20,27 @@ export function WeekDots({ weekStart, today, planned, done }: { weekStart: strin
           const state: DayState = doneDates.has(date) ? 'done' : p ? (p.optional ? 'optional' : 'planned') : 'rest'
           const weekday = WEEKDAY_NAMES[weekdayOf(date)]
           return (
-            <li key={date} className="flex flex-col items-center gap-1" aria-label={`${weekday}: ${LABEL[state]}`}>
-              <span className={`text-xs ${date === today ? 'font-bold text-text' : 'text-muted'}`}>{weekday[0]}</span>
+            <li key={date} className="flex flex-col items-center gap-2" aria-label={`${weekday}${date === today ? ' (today)' : ''}: ${LABEL[state]}`}>
+              <span className={`text-[12px] font-medium ${date === today ? 'text-text' : 'text-subtle'}`}>{weekday[0]}</span>
               <span
-                className={`flex size-8 items-center justify-center rounded-full ${
+                className={`flex size-9 items-center justify-center rounded-full ${
                   state === 'done'
                     ? 'bg-accent text-accent-ink'
                     : state === 'planned'
-                      ? 'border-2 border-accent'
+                      ? 'ring-2 ring-accent/70 ring-inset'
                       : state === 'optional'
                         ? 'border-2 border-dashed border-neutral'
                         : 'bg-surface-2'
-                } ${date === today ? 'ring-2 ring-text ring-offset-2 ring-offset-surface' : ''}`}
+                }`}
               >
                 {state === 'done' && <CheckIcon className="size-4" />}
               </span>
+              <span aria-hidden className={`size-1 rounded-full ${date === today ? 'bg-text' : 'bg-transparent'}`} />
             </li>
           )
         })}
       </ol>
-      <p className="mt-3 text-sm text-muted">
+      <p className="mt-3 border-t border-border pt-3 text-[13px] text-muted">
         {plannedCount > 0
           ? `${completedCount} of ${plannedCount} planned sessions done`
           : completedCount > 0

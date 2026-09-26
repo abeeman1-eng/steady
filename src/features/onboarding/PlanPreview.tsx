@@ -29,9 +29,9 @@ export function SessionTemplateCard({ session, linkExercises }: { session: Sessi
           {session.targets.exercises.map((t) => {
             const ex = EXERCISES_BY_ID.get(t.exerciseId)
             return (
-              <li key={t.exerciseId} className="flex justify-between gap-2">
+              <li key={t.exerciseId} className="flex items-center justify-between gap-2">
                 {linkExercises && ex ? (
-                  <Link to={`/exercises/${ex.id}`} className="text-text underline decoration-neutral underline-offset-4 hover:text-accent">
+                  <Link to={`/exercises/${ex.id}`} className="inline-flex min-h-11 items-center text-text underline decoration-neutral underline-offset-4 hover:text-accent">
                     {ex.name}
                   </Link>
                 ) : (

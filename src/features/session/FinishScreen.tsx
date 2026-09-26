@@ -40,7 +40,7 @@ export function FinishScreen() {
         </button>
       </header>
       <div>
-        <h1 className="text-2xl font-bold">Nice work</h1>
+        <h1 className="text-[28px] leading-tight font-semibold">Nice work</h1>
         <p className="mt-1 text-muted">
           {workout.name}
           {!isCardio && ` · ${sets.length - skipped} sets done`}

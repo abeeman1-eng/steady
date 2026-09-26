@@ -1,4 +1,4 @@
-import { type MealType, type Nutrition, normalizeBarcode } from '../../domain/nutrition'
+import { type MealType, type Nutrition, normalizeBarcode, pickNutrition } from '../../domain/nutrition'
 import { db } from '../db'
 import { stamp, touch } from '../records'
 import type { FoodRecord, MealEntryRecord, SavedMealRecord } from '../schema'
@@ -82,10 +82,7 @@ export async function logFood(date: string, mealType: MealType, foodId: string, 
     servings,
     name: food.name,
     servingSize: food.servingSize,
-    calories: food.calories,
-    proteinG: food.proteinG,
-    carbsG: food.carbsG,
-    fatG: food.fatG,
+    ...pickNutrition(food),
   })
   await db.mealEntries.add(entry)
   return entry.id
