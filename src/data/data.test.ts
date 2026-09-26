@@ -6,6 +6,7 @@ import { db, migrateProfileToV2, TABLE_NAMES } from './db'
 import { ensureExerciseSeed } from './repositories/exerciseRepo'
 import { activatePlan, getPlannedBetween, getPlannedForDate } from './repositories/planRepo'
 import { getProfile, saveOnboarding } from './repositories/profileRepo'
+import { findFoodByBarcode, getCached, getEntriesForDate, listRecentFoods, listSavedMeals, logFood, logSavedMeal, saveMealAsFavorite, setCached, upsertFood } from './repositories/mealRepo'
 import { listPersonalRecords } from './repositories/recordsRepo'
 import {
   addExercise,
@@ -39,7 +40,7 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers())
 
 beforeEach(async () => {
-  await Promise.all(TABLE_NAMES.map((t) => db.table(t).clear()))
+  await Promise.all([...TABLE_NAMES, 'lookupCache'].map((t) => db.table(t).clear()))
   await ensureExerciseSeed()
 })
 
@@ -190,5 +191,58 @@ describe('multiple goals migration (v1 → v2)', () => {
       .upgrade((tx) => tx.table('profile').toCollection().modify(migrateProfileToV2))
     expect(await v2.table('profile').get('me')).toEqual({ id: 'me', goals: ['strength'] })
     await v2.delete()
+  })
+})
+
+describe('meal tracking', () => {
+  const oats = { name: 'Oats', servingSize: '40 g', calories: 150, proteinG: 5, carbsG: 27, fatG: 3, source: 'manual' as const }
+
+  it('logs entries with a snapshot of the food, so later edits do not rewrite history', async () => {
+    const foodId = await upsertFood(oats)
+    await logFood('2026-09-28', 'breakfast', foodId, 1.5)
+    await db.foods.update(foodId, { calories: 999 })
+    const [entry] = await getEntriesForDate('2026-09-28')
+    expect(entry).toMatchObject({ mealType: 'breakfast', servings: 1.5, name: 'Oats', calories: 150 })
+  })
+
+  it('dedupes foods by database id and by barcode (UPC-A or EAN form)', async () => {
+    const a = await upsertFood({ ...oats, externalId: 'usda:1:40' })
+    const b = await upsertFood({ ...oats, externalId: 'usda:1:40', calories: 151 })
+    expect(a).toBe(b)
+    const c = await upsertFood({ ...oats, name: 'Bar', barcode: '012345678905' })
+    expect((await findFoodByBarcode('0012345678905'))?.id).toBe(c)
+    expect(await db.foods.count()).toBe(2)
+  })
+
+  it('lists the most recent distinct foods first', async () => {
+    const ids = [await upsertFood({ ...oats, name: 'A' }), await upsertFood({ ...oats, name: 'B' }), await upsertFood({ ...oats, name: 'C' })]
+    for (const id of [ids[0], ids[1], ids[0], ids[2]]) {
+      await logFood('2026-09-28', 'snacks', id, 1)
+      vi.setSystemTime(new Date(Date.now() + 1000))
+    }
+    expect((await listRecentFoods()).map((f) => f.name)).toEqual(['C', 'A', 'B'])
+    vi.setSystemTime(new Date(2026, 8, 28, 9))
+  })
+
+  it('saves a whole meal as a favorite and logs it again in one go', async () => {
+    const eggs = await upsertFood({ ...oats, name: 'Eggs' })
+    const toast = await upsertFood({ ...oats, name: 'Toast' })
+    await logFood('2026-09-28', 'breakfast', eggs, 2)
+    await logFood('2026-09-28', 'breakfast', toast, 1)
+    const mealId = await saveMealAsFavorite('Usual breakfast', await getEntriesForDate('2026-09-28'))
+    await db.foods.delete(toast)
+    expect(await logSavedMeal(mealId, '2026-09-29', 'lunch')).toBe(1) // deleted food is skipped
+    expect(await getEntriesForDate('2026-09-29')).toMatchObject([{ name: 'Eggs', servings: 2, mealType: 'lunch' }])
+    expect((await listSavedMeals())[0].name).toBe('Usual breakfast')
+  })
+
+  it('backs up favorite meals and leaves the lookup cache out', async () => {
+    await onboard()
+    await saveMealAsFavorite('M', [])
+    await setCached('off:barcode:1', { status: 'notFound' })
+    const backup = await exportAll()
+    expect(backup.tables.savedMeals).toHaveLength(1)
+    expect(backup.tables).not.toHaveProperty('lookupCache')
+    expect(await getCached('off:barcode:1', 30)).toEqual({ status: 'notFound' })
   })
 })

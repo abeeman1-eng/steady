@@ -16,8 +16,9 @@ const TABS = [
 ]
 
 export function TabBar() {
-  // The exercise guide is opened from the Plan tab, so keep Plan highlighted there.
-  const inGuide = useLocation().pathname.startsWith('/exercises')
+  // Screens opened from a tab keep that tab highlighted: the exercise guide (Plan) and food log (Today).
+  const path = useLocation().pathname
+  const parentTab = path.startsWith('/exercises') ? '/plan' : path.startsWith('/meals') ? '/' : null
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <ul className="mx-auto grid max-w-xl grid-cols-5">
@@ -27,7 +28,7 @@ export function TabBar() {
               to={t.to}
               end={t.to === '/'}
               className={({ isActive }) =>
-                `flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${isActive || (inGuide && t.to === '/plan') ? 'text-accent' : 'text-muted hover:text-text'}`
+                `flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${isActive || parentTab === t.to ?'text-accent' : 'text-muted hover:text-text'}`
               }
             >
               {t.icon}

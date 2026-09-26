@@ -1,8 +1,9 @@
 import { db, migrateProfileToV2, TABLE_NAMES, type TableName } from './db'
 import { PROFILE_ID, updateProfile } from './repositories/profileRepo'
 
-// 2: profile.goals replaced profile.mainGoal. Older backups are upgraded on import.
-export const BACKUP_FORMAT_VERSION = 2
+// 2: profile.goals replaced profile.mainGoal. 3: meal tracking (savedMeals table).
+// Older backups are upgraded on import.
+export const BACKUP_FORMAT_VERSION = 3
 
 export interface BackupFile {
   app: 'steady'

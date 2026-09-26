@@ -7,6 +7,8 @@ import { ExerciseDetailScreen } from './features/exercises/ExerciseDetailScreen'
 import { ExerciseGuideScreen } from './features/exercises/ExerciseGuideScreen'
 import { HistoryScreen } from './features/history/HistoryScreen'
 import { WorkoutDetailScreen } from './features/history/WorkoutDetailScreen'
+import { AddFoodScreen } from './features/meals/AddFoodScreen'
+import { MealsScreen } from './features/meals/MealsScreen'
 import { OnboardingScreen } from './features/onboarding/OnboardingScreen'
 import { PlanScreen } from './features/plan/PlanScreen'
 import { ProgressScreen } from './features/progress/ProgressScreen'
@@ -49,6 +51,8 @@ export default function App() {
           <Route element={<TabLayout />}>
             <Route index element={<TodayScreen />} />
             <Route path="/plan" element={<PlanScreen />} />
+            <Route path="/meals" element={<MealsScreen />} />
+            <Route path="/meals/add" element={<AddFoodScreen />} />
             <Route path="/exercises" element={<ExerciseGuideScreen />} />
             <Route path="/exercises/:exerciseId" element={<ExerciseDetailScreen />} />
             <Route path="/history" element={<HistoryScreen />} />

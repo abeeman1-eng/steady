@@ -5,11 +5,13 @@ import { Button, Card, PRBadge, SectionTitle } from '../../components/ui'
 import { downloadBackup } from '../../data/backup'
 import { ensurePlannedSessions, getNextPlanned, getPlannedBetween, getPlannedForDate } from '../../data/repositories/planRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
+import { getEntriesForDate } from '../../data/repositories/mealRepo'
 import { getMostRecentPR } from '../../data/repositories/recordsRepo'
 import { getInProgressWorkout, listCompletedBetween, startFreeWorkout, startPlannedWorkout } from '../../data/repositories/workoutRepo'
 import { needsBackupReminder } from '../../domain/backupReminder'
 import { addDays, formatDate, startOfWeek, todayISO } from '../../domain/dates'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
+import { formatCalories, mealForTime, scaleNutrition, sumNutrition } from '../../domain/nutrition'
 import { describePR, formatSetTarget } from '../../lib/format'
 import { useProfile } from '../../lib/profileContext'
 import { WeekDots } from './WeekDots'
@@ -139,8 +141,49 @@ export function TodayScreen() {
             </Link>
           </section>
         )}
+
+        {profile.showMeals !== false && <FoodTodayCard today={today} />}
       </div>
     </main>
+  )
+}
+
+function FoodTodayCard({ today }: { today: string }) {
+  const { nutritionTargets: targets } = useProfile()
+  const entries = useLiveQuery(() => getEntriesForDate(today), [today])
+  if (!entries) return null
+  const totals = sumNutrition(entries.map((e) => scaleNutrition(e, e.servings)))
+  return (
+    <section className="flex flex-col gap-2">
+      <SectionTitle>Food today</SectionTitle>
+      <Card>
+        <dl className="grid grid-cols-2 gap-3">
+          <div>
+            <dt className="text-sm text-muted">Calories</dt>
+            <dd className="text-2xl font-bold tabular-nums">
+              {formatCalories(totals.calories)}
+              {targets?.calories ? <span className="text-base font-normal text-muted"> / {formatCalories(targets.calories)}</span> : null}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm text-muted">Protein</dt>
+            <dd className="text-2xl font-bold tabular-nums">
+              {Math.round(totals.proteinG)}
+              {targets?.proteinG ? <span className="text-base font-normal text-muted"> / {Math.round(targets.proteinG)}</span> : null}
+              <span className="text-base font-normal text-muted"> g</span>
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-3 flex gap-2">
+          <Link to={`/meals/add?meal=${mealForTime()}`} className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-accent px-4 font-semibold text-accent-ink hover:brightness-110">
+            Log food
+          </Link>
+          <Link to="/meals" className="flex min-h-11 items-center justify-center rounded-xl border border-border bg-surface-2 px-4 hover:bg-border">
+            View day
+          </Link>
+        </div>
+      </Card>
+    </section>
   )
 }
 

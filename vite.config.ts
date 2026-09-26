@@ -9,6 +9,8 @@ const base = process.env.BASE_PATH ?? '/'
 
 export default defineConfig({
   base,
+  // The USDA food list (~1 MB raw, ~200 KB gzipped) and barcode scanner are lazy-loaded chunks.
+  build: { chunkSizeWarningLimit: 1100 },
   plugins: [
     react(),
     tailwindcss(),

@@ -1,3 +1,4 @@
+import type { MealType, Nutrition } from '../domain/nutrition'
 import type { PRKind } from '../domain/records'
 import type { Build, Equipment, ExerciseDef, ExperienceLevel, MainGoal, SessionTargets, SessionTemplate, Units } from '../domain/types'
 
@@ -34,6 +35,10 @@ export interface ProfileRecord extends BaseRecord {
   lastBackupAt?: string
   backupReminderSnoozedUntil?: string
   persistentStorage?: boolean
+  /** Meal tracking on Today and in the app. Undefined means on. */
+  showMeals?: boolean
+  /** Optional daily targets the user sets; the app never sets them. */
+  nutritionTargets?: Partial<Nutrition>
 }
 
 export type ExerciseRecord = ExerciseDef & BaseRecord
@@ -117,23 +122,42 @@ export interface PersonalRecordRecord extends BaseRecord {
   date: string
 }
 
-export interface FoodRecord extends BaseRecord {
+/** A food at one serving size; nutrition values are per serving. */
+export interface FoodRecord extends BaseRecord, Nutrition {
   name: string
   servingSize: string
-  calories: number
-  proteinG: number
-  carbsG: number
-  fatG: number
   source: 'manual' | 'usda' | 'openFoodFacts'
+  /** Normalized (see normalizeBarcode). */
   barcode?: string
+  /** Dedupes foods from a database, e.g. "usda:173944:118" (fdcId and serving grams). */
+  externalId?: string
   isFavorite: boolean
 }
 
-export interface MealEntryRecord extends BaseRecord {
+/**
+ * One logged food. Name, serving and per-serving nutrition are copied from the food when
+ * logged, so editing or deleting a food never rewrites past days.
+ */
+export interface MealEntryRecord extends BaseRecord, Nutrition {
   date: string
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks'
+  mealType: MealType
   foodId: string
   servings: number
+  name: string
+  servingSize: string
+}
+
+/** A favorite whole meal: foods and servings that can be logged again in one tap. */
+export interface SavedMealRecord extends BaseRecord {
+  name: string
+  items: { foodId: string; servings: number }[]
+}
+
+/** Cached Open Food Facts responses (not backed up). */
+export interface LookupCacheRecord {
+  id: string
+  value: unknown
+  fetchedAt: string
 }
 
 export interface StravaAuthRecord extends BaseRecord {

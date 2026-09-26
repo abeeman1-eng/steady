@@ -13,6 +13,8 @@ import type {
   SetRecord,
   StravaAuthRecord,
   WorkoutRecord,
+  SavedMealRecord,
+  LookupCacheRecord,
 } from './schema'
 
 export type SteadyDB = Dexie & {
@@ -29,6 +31,8 @@ export type SteadyDB = Dexie & {
   mealEntries: EntityTable<MealEntryRecord, 'id'>
   stravaAuth: EntityTable<StravaAuthRecord, 'id'>
   bodyMetrics: EntityTable<BodyMetricRecord, 'id'>
+  savedMeals: EntityTable<SavedMealRecord, 'id'>
+  lookupCache: EntityTable<LookupCacheRecord, 'id'>
 }
 
 export const TABLE_NAMES = [
@@ -45,8 +49,10 @@ export const TABLE_NAMES = [
   'mealEntries',
   'stravaAuth',
   'bodyMetrics',
+  'savedMeals',
 ] as const
 
+/** Tables included in backups. lookupCache is a disposable cache and is left out. */
 export type TableName = (typeof TABLE_NAMES)[number]
 
 // All tables exist from version 1 so later phases do not need a migration just to start using them.
@@ -73,6 +79,14 @@ db.version(1).stores({
 db.version(2)
   .stores({})
   .upgrade((tx) => tx.table('profile').toCollection().modify(migrateProfileToV2))
+
+// v3: meal tracking. Foods get an externalId index; favorite meals and a lookup cache are added.
+db.version(3).stores({
+  foods: 'id, name, barcode, externalId',
+  mealEntries: 'id, date, foodId, createdAt',
+  savedMeals: 'id, name',
+  lookupCache: 'id, fetchedAt',
+})
 
 /** Convert a v1 profile row in place. Safe to run on rows that are already v2. */
 export function migrateProfileToV2(row: Record<string, unknown>): void {

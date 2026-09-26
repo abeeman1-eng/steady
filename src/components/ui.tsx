@@ -122,3 +122,32 @@ export function CheckIcon({ className = '' }: { className?: string }) {
 export function PRBadge({ className = '' }: { className?: string }) {
   return <span className={`inline-flex items-center rounded-md bg-gold px-1.5 py-0.5 text-xs font-bold text-gold-ink ${className}`}>PR</span>
 }
+
+/** − value + control with typed entry, e.g. servings in steps of 0.5. */
+export function Stepper({ label, value, onChange, step = 1, min = 0, format = String }: { label: string; value: number; onChange: (v: number) => void; step?: number; min?: number; format?: (v: number) => string }) {
+  const clamp = (v: number) => Math.max(min, Math.round(v * 100) / 100)
+  return (
+    <div className="flex items-center gap-2" role="group" aria-label={label}>
+      <button type="button" onClick={() => onChange(clamp(value - step))} disabled={value - step < min} className="min-h-11 min-w-11 rounded-xl bg-surface-2 text-xl disabled:opacity-40" aria-label={`Decrease ${label}`}>
+        −
+      </button>
+      <input
+        type="number"
+        inputMode="decimal"
+        aria-label={label}
+        value={format(value)}
+        step={step}
+        min={min}
+        onChange={(e) => {
+          const n = parseFloat(e.target.value)
+          if (Number.isFinite(n)) onChange(clamp(n))
+        }}
+        onFocus={(e) => e.target.select()}
+        className="min-h-11 w-20 rounded-xl border border-border bg-surface-2 text-center text-lg tabular-nums focus:border-accent focus:outline-none"
+      />
+      <button type="button" onClick={() => onChange(clamp(value + step))} className="min-h-11 min-w-11 rounded-xl bg-surface-2 text-xl" aria-label={`Increase ${label}`}>
+        +
+      </button>
+    </div>
+  )
+}
