@@ -103,6 +103,15 @@ export async function moveEntry(entryId: string, mealType: MealType): Promise<vo
 
 export const deleteEntry = (entryId: string) => db.mealEntries.delete(entryId)
 
+/** Log planner items (catalog foods at specific gram amounts), saving each as a USDA food. */
+export async function logPlannedItems(date: string, mealType: MealType, items: { name: string; fdcId: number; grams: number; nutrition: Nutrition }[]): Promise<void> {
+  for (const item of items) {
+    const grams = Math.round(item.grams)
+    const foodId = await upsertFood({ name: item.name, servingSize: `${grams} g`, ...pickNutrition(item.nutrition), source: 'usda', externalId: `usda:${item.fdcId}:${grams}` })
+    await logFood(date, mealType, foodId, 1)
+  }
+}
+
 // ----- Favorite meals -----
 
 export async function saveMealAsFavorite(name: string, entries: Pick<MealEntryRecord, 'foodId' | 'servings'>[]): Promise<string> {

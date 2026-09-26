@@ -8,6 +8,7 @@ import { updateProfile } from '../../data/repositories/profileRepo'
 import { formatDate, todayISO } from '../../domain/dates'
 import type { Units } from '../../domain/types'
 import { formatHeight, formatWeight, fromDisplayWeight, weightUnitLabel } from '../../domain/units'
+import { DIET_STYLES } from '../../domain/foodCatalog'
 import { EQUIPMENT_LABELS, experienceLabel, goalLabel } from '../../lib/labels'
 import { useProfile } from '../../lib/profileContext'
 import { BodyStatsStep } from '../onboarding/BodyStatsStep'
@@ -116,7 +117,9 @@ function MealsSection() {
       </Card>
       {enabled && (
         <ListGroup>
+          <ListRow title="Build my plan" subtitle="Guided targets and a sample day of meals" to="/meals/plan" />
           <ListRow title="Daily targets" subtitle={summary} to="/meals/targets" />
+          <ListRow title="Meal ideas" subtitle={DIET_STYLES.find((d) => d.value === (profile.dietStyle ?? 'any'))!.label} to="/meals/ideas" />
           <ListRow title="Food log" subtitle="Today’s meals and totals" to="/meals" />
         </ListGroup>
       )}
@@ -239,7 +242,7 @@ function DataSection() {
         ) : (
           <button
             type="button"
-            className="text-accent underline"
+            className="inline-flex min-h-11 items-center text-accent underline"
             onClick={async () => updateProfile({ persistentStorage: await requestPersistentStorage() })}
           >
             not granted, try again

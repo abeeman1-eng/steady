@@ -10,6 +10,7 @@ import { addDays, formatDate, todayISO } from '../../domain/dates'
 import { type MealType, MEAL_TYPES, countMissingExtras, formatCalories, formatServings, scaleNutrition, sumNutrition } from '../../domain/nutrition'
 import { targetsNeedReview } from '../../domain/targets'
 import { useProfile } from '../../lib/profileContext'
+import { IdeasCard } from './Ideas'
 import { DailySummary, MacroLine, NutrientPanel } from './NutritionUi'
 
 const entryNutrition = (e: MealEntryRecord) => scaleNutrition(e, e.servings)
@@ -58,6 +59,8 @@ export function MealsScreen() {
           )}
 
           <DailySummary totals={sumNutrition(entries.map(entryNutrition))} targets={profile.nutritionTargets} missing={countMissingExtras(entries)} />
+
+          {date === today && <IdeasCard totals={sumNutrition(entries.map(entryNutrition))} targets={profile.nutritionTargets} diet={profile.dietStyle ?? 'any'} date={date} fiberUnmeasured={countMissingExtras(entries).fiberG > 0} />}
 
           {MEAL_TYPES.map((m) => {
             const items = entries.filter((e) => e.mealType === m.value)

@@ -68,6 +68,14 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 - Tracked nutrients: calories, protein, carbs, fat, plus fiber, sugar, saturated fat and sodium. Extras a source doesn't list are stored as missing (shown "–"), never as 0.
 - **Suggested targets** (`src/domain/targets.ts`) use Mifflin-St Jeor with an activity factor, a goal adjustment (−15% for weight loss, +5% for strength), a 1,200 kcal / resting-energy floor, protein at 1.2–1.6 g/kg of a BMI-25-capped reference weight, fat at 30%, carbs as the remainder, fiber at 14 g per 1,000 kcal, and limits for sugar and saturated fat (10% of calories) and sodium (2,300 mg). The user reviews and edits every value; nothing is applied automatically.
 
+### Plans and recommendations
+
+- **Build my plan** (`/meals/plan`) walks beginners through a few questions and shows suggested targets, how they split across meals, and a sample day of real food. Nothing is saved until the user accepts.
+- `src/domain/foodCatalog.ts` holds ~45 everyday foods (keyed to USDA ids, with realistic portion steps and diet tags) and meal templates with plant-based alternatives.
+- `src/domain/mealPlanner.ts` sizes portions with bounded least-squares (protein shortfalls weighted most, overshoot cheap), plans days meal by meal so later meals compensate, and ranks food suggestions for the biggest remaining gap with a staple boost and variety across meat, fish, egg/dairy and plant.
+- Across 864 simulated days (sex, weight, activity, goal, diet style), the median sample day is within about 2% of the calorie target, and 90% of days are within 6%.
+- No external recipe or meal-plan service is used: they need secret API keys (no server here) and have tight free tiers.
+
 ### Design
 
 Dark theme built on color tokens in `src/theme/tokens.css` and a small component set in `src/components/ui.tsx` (grouped lists, segmented control, ring and meter). Inter is self-hosted so it works offline. Macro colors are data-viz categorical slots validated for contrast and color-vision deficiency on the app's surface, and always appear next to a text label.

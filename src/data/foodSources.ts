@@ -1,5 +1,6 @@
 import { prettyFoodName, searchUsdaFoods } from '../domain/foodSearch'
-import { type ParsedProduct, type UsdaFood, normalizeBarcode, parseOffProduct } from '../domain/nutrition'
+import type { Per100 } from '../domain/mealPlanner'
+import { type ParsedProduct, type UsdaFood, normalizeBarcode, parseOffProduct, usdaPer100g } from '../domain/nutrition'
 import { getCached, setCached } from './repositories/mealRepo'
 
 // ----- Built-in USDA list -----
@@ -20,6 +21,21 @@ export async function searchUsda(query: string, limit = 25): Promise<UsdaFood[]>
 }
 
 export const usdaDisplayName = (food: UsdaFood) => prettyFoodName(food[1])
+
+let lookupPromise: Promise<{ per100: Per100; byId: Map<number, UsdaFood> }> | null = null
+
+/** Per-100 g nutrition by USDA id, for the meal planner. */
+export function loadUsdaLookup() {
+  lookupPromise ??= loadUsdaFoods().then((foods) => {
+    const byId = new Map(foods.map((f) => [f[0], f]))
+    const per100: Per100 = (id) => {
+      const f = byId.get(id)
+      return f ? usdaPer100g(f) : undefined
+    }
+    return { per100, byId }
+  })
+  return lookupPromise
+}
 
 // ----- Open Food Facts -----
 

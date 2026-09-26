@@ -128,8 +128,8 @@ export function DailySummary({ totals, targets, missing }: { totals: Nutrition; 
 
       <div className="-mt-2 flex items-center justify-between gap-3 text-[12px] text-subtle">
         <span>{unlisted.length > 0 ? `Some foods don’t list ${unlisted.join(', ')}.` : ''}</span>
-        <Link to="/meals/targets" className="inline-flex min-h-11 shrink-0 items-center font-medium text-accent">
-          {targets && Object.keys(targets).length ? 'Edit targets' : 'Set targets'}
+        <Link to={targets && Object.keys(targets).length ? '/meals/targets' : '/meals/plan'} className="inline-flex min-h-11 shrink-0 items-center font-medium text-accent">
+          {targets && Object.keys(targets).length ? 'Edit targets' : 'Build my plan'}
         </Link>
       </div>
     </Card>

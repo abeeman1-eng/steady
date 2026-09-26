@@ -1,6 +1,7 @@
 import type { MealType, Nutrition } from '../domain/nutrition'
 import type { PRKind } from '../domain/records'
-import type { ActivityLevel, Sex } from '../domain/targets'
+import type { DietStyle } from '../domain/foodCatalog'
+import type { ActivityLevel, NutritionGoal, Sex } from '../domain/targets'
 import type { Build, Equipment, ExerciseDef, ExperienceLevel, MainGoal, SessionTargets, SessionTemplate, Units } from '../domain/types'
 
 /**
@@ -47,6 +48,8 @@ export interface ProfileRecord extends BaseRecord {
   /** Stored instead of age so it stays current. */
   birthYear?: number
   activityLevel?: ActivityLevel
+  nutritionGoal?: NutritionGoal
+  dietStyle?: DietStyle
 }
 
 export type ExerciseRecord = ExerciseDef & BaseRecord

@@ -3,6 +3,17 @@ import type { MainGoal } from './types'
 
 export type Sex = 'female' | 'male' | 'unspecified'
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'very' | 'extra'
+/** A nutrition goal chosen in the plan builder; overrides what the training goals imply. */
+export type NutritionGoal = 'lose' | 'maintain' | 'build'
+
+export const NUTRITION_GOALS: { value: NutritionGoal; label: string; hint: string }[] = [
+  { value: 'lose', label: 'Lose weight', hint: 'A gentle 15% calorie deficit' },
+  { value: 'maintain', label: 'Maintain', hint: 'Keep your weight steady' },
+  { value: 'build', label: 'Build muscle', hint: 'A small 5% surplus with extra protein' },
+]
+
+/** What the training goals imply, used when no nutrition goal has been chosen. */
+export const nutritionGoalFromGoals = (goals: MainGoal[]): NutritionGoal => (goals.includes('weightLoss') ? 'lose' : goals.includes('strength') ? 'build' : 'maintain')
 
 export const ACTIVITY_LEVELS: Record<ActivityLevel, { factor: number; label: string; hint: string }> = {
   sedentary: { factor: 1.2, label: 'Mostly sitting', hint: 'Desk job, little other exercise' },
@@ -19,6 +30,7 @@ export interface TargetInputs {
   weightKg: number
   activity: ActivityLevel
   goals: MainGoal[]
+  nutritionGoal?: NutritionGoal
 }
 
 export type FullTargets = Required<Nutrition>
@@ -48,9 +60,9 @@ export function mifflinStJeor({ sex, age, heightCm, weightKg }: Pick<TargetInput
   return 10 * weightKg + 6.25 * heightCm - 5 * age + offset
 }
 
-function goalAdjustment(goals: MainGoal[]): { pct: number; reason: string } {
-  if (goals.includes('weightLoss')) return { pct: -0.15, reason: '15% below maintenance for steady, gradual weight loss' }
-  if (goals.includes('strength')) return { pct: 0.05, reason: '5% above maintenance to support building strength' }
+function goalAdjustment(goal: NutritionGoal): { pct: number; reason: string } {
+  if (goal === 'lose') return { pct: -0.15, reason: '15% below maintenance for steady, gradual weight loss' }
+  if (goal === 'build') return { pct: 0.05, reason: '5% above maintenance to support building strength' }
   return { pct: 0, reason: 'maintenance, to keep your weight steady' }
 }
 
@@ -61,7 +73,8 @@ function goalAdjustment(goals: MainGoal[]): { pct: number; reason: string } {
 export function suggestTargets(input: TargetInputs): SuggestedTargets {
   const bmr = mifflinStJeor(input)
   const maintenance = bmr * ACTIVITY_LEVELS[input.activity].factor
-  const { pct, reason } = goalAdjustment(input.goals)
+  const goal = input.nutritionGoal ?? nutritionGoalFromGoals(input.goals)
+  const { pct, reason } = goalAdjustment(goal)
   const floor = Math.max(MIN_CALORIES, bmr)
   const adjusted = maintenance * (1 + pct)
   const raisedToMinimum = adjusted < floor
@@ -69,7 +82,7 @@ export function suggestTargets(input: TargetInputs): SuggestedTargets {
 
   const heightM = input.heightCm / 100
   const refKg = Math.min(input.weightKg, REFERENCE_BMI * heightM * heightM)
-  const highProtein = input.goals.includes('strength') || input.goals.includes('weightLoss')
+  const highProtein = goal !== 'maintain' || input.goals.includes('strength')
   const proteinPerKg = highProtein ? 1.6 : 1.2
   const proteinG = Math.round(refKg * proteinPerKg)
   const fatG = Math.max(Math.round((calories * 0.3) / 9), Math.round(refKg * 0.6))

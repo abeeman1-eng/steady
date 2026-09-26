@@ -44,9 +44,12 @@ function optionsFor(c: FoodCandidate): { name: string; options: Option[] } {
   }
   const name = usdaDisplayName(c.food)
   const per100 = usdaPer100g(c.food)
+  const standard = usdaServingOptions(c.food)
+  // A suggested amount that isn't a standard serving (e.g. 150 g chicken) goes first.
+  const custom = c.grams !== undefined && !standard.some((o) => Math.abs(o.grams - c.grams!) < 0.01) ? [{ label: `${Math.round(c.grams)} g`, grams: c.grams }] : []
   return {
     name,
-    options: usdaServingOptions(c.food).map((o) => {
+    options: [...custom, ...standard].map((o) => {
       const nutrition = nutritionForGrams(per100, o.grams)
       return { label: o.label, nutrition, toFood: () => ({ name, servingSize: o.label, ...nutrition, source: 'usda', externalId: `usda:${c.food[0]}:${o.grams}` }) }
     }),
@@ -57,9 +60,8 @@ export function FoodConfirmSheet({ candidate, mealType, date, onDone, onClose }:
   const { name, options } = useMemo(() => optionsFor(candidate), [candidate])
   const [optionIndex, setOptionIndex] = useState(() => {
     if (candidate.kind !== 'usda') return 0
-    const opts = usdaServingOptions(candidate.food)
-    const saved = candidate.grams === undefined ? -1 : opts.findIndex((o) => Math.abs(o.grams - candidate.grams!) < 0.01)
-    return saved >= 0 ? saved : defaultServingIndex(opts)
+    if (candidate.grams === undefined) return defaultServingIndex(usdaServingOptions(candidate.food))
+    return Math.max(0, options.findIndex((o) => o.label.includes(`(${Math.round(candidate.grams!)} g)`) || o.label === `${Math.round(candidate.grams!)} g`))
   })
   const [servings, setServings] = useState(1)
   const initialFavorite = candidate.kind === 'saved' ? candidate.food.isFavorite : candidate.kind === 'usda' ? !!candidate.isFavorite : false
