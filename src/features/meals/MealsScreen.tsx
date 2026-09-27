@@ -9,6 +9,7 @@ import type { MealEntryRecord } from '../../data/schema'
 import { addDays, formatDate, todayISO } from '../../domain/dates'
 import { type MealType, MEAL_TYPES, countMissingExtras, formatCalories, formatServings, scaleNutrition, sumNutrition } from '../../domain/nutrition'
 import { targetsNeedReview } from '../../domain/targets'
+import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { IdeasCard } from './Ideas'
 import { DailySummary, MacroLine, NutrientPanel } from './NutritionUi'
@@ -20,6 +21,7 @@ export function MealsScreen() {
   const today = todayISO()
   const date = params.get('date') ?? today
   const profile = useProfile()
+  const { targets, minor } = useNutritionTargets()
   const entries = useLiveQuery(() => getEntriesForDate(date), [date])
   const latestWeight = useLiveQuery(getLatestBodyWeight)
   const [editing, setEditing] = useState<MealEntryRecord | null>(null)
@@ -27,7 +29,7 @@ export function MealsScreen() {
 
   const go = (d: string) => setParams(d === today ? {} : { date: d }, { replace: true })
   const dayLabel = date === today ? 'Today' : date === addDays(today, -1) ? 'Yesterday' : formatDate(date)
-  const review = profile.nutritionTargets && targetsNeedReview(profile.nutritionTargetsBasis?.weightKg, latestWeight?.weightKg)
+  const review = targets && targetsNeedReview(profile.nutritionTargetsBasis?.weightKg, latestWeight?.weightKg)
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
@@ -58,9 +60,9 @@ export function MealsScreen() {
             </Link>
           )}
 
-          <DailySummary totals={sumNutrition(entries.map(entryNutrition))} targets={profile.nutritionTargets} missing={countMissingExtras(entries)} />
+          <DailySummary totals={sumNutrition(entries.map(entryNutrition))} targets={targets} missing={countMissingExtras(entries)} minor={minor} />
 
-          {date === today && <IdeasCard totals={sumNutrition(entries.map(entryNutrition))} targets={profile.nutritionTargets} diet={profile.dietStyle ?? 'any'} date={date} fiberUnmeasured={countMissingExtras(entries).fiberG > 0} />}
+          {date === today && <IdeasCard totals={sumNutrition(entries.map(entryNutrition))} targets={targets} diet={profile.dietStyle ?? 'any'} date={date} fiberUnmeasured={countMissingExtras(entries).fiberG > 0} minor={minor} />}
 
           {MEAL_TYPES.map((m) => {
             const items = entries.filter((e) => e.mealType === m.value)

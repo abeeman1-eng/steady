@@ -3,8 +3,33 @@ import { Button, Field, inputClass } from '../../components/ui'
 import { addBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { formatDate, todayISO } from '../../domain/dates'
+import { birthYearFromAge, isMinor } from '../../domain/targets'
 import { cmToFeetInches, feetInchesToCm, formatHeight, formatWeight, fromDisplayWeight, weightUnitLabel } from '../../domain/units'
 import { useProfile } from '../../lib/profileContext'
+
+/**
+ * Age, stored as a birth year. Accepts 5–100 so younger users see the under-18 notice instead of
+ * a field that silently ignores them. Entering an age under 18 clears any saved nutrition targets.
+ */
+export function AgeField({ age }: { age: number | undefined }) {
+  return (
+    <Field label="Age">
+      <input
+        className={inputClass}
+        type="number"
+        inputMode="numeric"
+        min={5}
+        max={100}
+        defaultValue={age ?? ''}
+        onChange={(e) => {
+          const n = parseInt(e.target.value, 10)
+          if (!(n >= 5 && n <= 100)) return
+          void updateProfile(isMinor(n) ? { birthYear: birthYearFromAge(n), nutritionTargets: undefined, nutritionTargetsBasis: undefined } : { birthYear: birthYearFromAge(n) })
+        }}
+      />
+    </Field>
+  )
+}
 
 /** Height with inline editing, saved to the profile. */
 export function HeightField() {

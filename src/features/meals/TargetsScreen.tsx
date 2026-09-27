@@ -5,10 +5,11 @@ import { Button, Card, Field, Section, Segmented, inputClass } from '../../compo
 import { getLatestBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { NUTRIENT_KEYS, NUTRIENTS, type NutrientKey, type Nutrition } from '../../domain/nutrition'
-import { ACTIVITY_LEVELS, type ActivityLevel, type Sex, ageFromBirthYear, birthYearFromAge, suggestTargets } from '../../domain/targets'
+import { ACTIVITY_LEVELS, type ActivityLevel, type Sex, ageFromBirthYear, suggestTargets, targetsPolicy } from '../../domain/targets'
 import { goalLabel } from '../../lib/labels'
 import { useProfile } from '../../lib/profileContext'
-import { HeightField, WeightField } from './BodyInputs'
+import { AgeField, HeightField, WeightField } from './BodyInputs'
+import { MinorNotice } from './MinorNotice'
 
 type Draft = Record<NutrientKey, string>
 
@@ -22,7 +23,10 @@ export function TargetsScreen() {
   const [saved, setSaved] = useState(false)
 
   const age = profile.birthYear ? ageFromBirthYear(profile.birthYear) : undefined
-  const ready = profile.sex && age && profile.activityLevel && profile.heightCm && latest
+  // Targets need a known adult age: no suggestions, editing or saving for minors or unknown age.
+  const policy = targetsPolicy(age)
+  const isMinorAge = !policy.canShowSaved
+  const ready = policy.canSet && profile.sex && age && profile.activityLevel && profile.heightCm && latest
   const suggestion = ready
     ? suggestTargets({ sex: profile.sex!, age: age!, heightCm: profile.heightCm!, weightKg: latest!.weightKg, activity: profile.activityLevel!, goals: profile.goals, nutritionGoal: profile.nutritionGoal })
     : null
@@ -33,6 +37,7 @@ export function TargetsScreen() {
   }
 
   async function save() {
+    if (!policy.canSet) return
     const targets: Partial<Nutrition> = {}
     for (const k of NUTRIENT_KEYS) {
       const n = parseFloat(draft[k])
@@ -71,126 +76,122 @@ export function TargetsScreen() {
                 ]}
               />
             </Field>
-            <Field label="Age">
-              <input
-                className={inputClass}
-                type="number"
-                inputMode="numeric"
-                min={13}
-                max={100}
-                defaultValue={age ?? ''}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10)
-                  if (n >= 13 && n <= 100) void updateProfile({ birthYear: birthYearFromAge(n) })
-                }}
-              />
-            </Field>
-            {age !== undefined && age < 18 && <p className="-mt-3 text-[13px] text-muted">These formulas are designed for adults. For teens, a doctor or dietitian can give better guidance.</p>}
+            <AgeField age={age} />
             <HeightField />
             <WeightField latestKg={latest?.weightKg} latestDate={latest?.date} />
           </Card>
         </Section>
 
-        <Section title="Activity level">
-          <div role="radiogroup" aria-label="Activity level" className="divide-y divide-border overflow-hidden rounded-[20px] bg-surface ring-1 ring-border ring-inset">
-            {(Object.keys(ACTIVITY_LEVELS) as ActivityLevel[]).map((a) => {
-              const on = profile.activityLevel === a
-              return (
-                <button key={a} type="button" role="radio" aria-checked={on} onClick={() => updateProfile({ activityLevel: a })} className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-surface-2">
-                  <span>
-                    <span className="block text-[15px]">{ACTIVITY_LEVELS[a].label}</span>
-                    <span className="mt-0.5 block text-[13px] text-muted">{ACTIVITY_LEVELS[a].hint}</span>
-                  </span>
-                  <span aria-hidden className={`size-5 shrink-0 rounded-full ${on ? 'border-[6px] border-accent' : 'ring-2 ring-neutral ring-inset'}`} />
-                </button>
-              )
-            })}
-          </div>
-          <p className="px-1 text-[13px] text-subtle">Count your Steady workouts too.</p>
-        </Section>
-
-        <Section
-          title="Your targets"
-          action={
-            suggestion && (
-              <button type="button" onClick={() => setDraft(toDraft(suggestion.targets))} className="inline-flex min-h-11 items-center text-[13px] font-medium text-accent">
-                Use all suggestions
-              </button>
-            )
-          }
-        >
-          {suggestion ? (
-            <Card className="!py-4">
-              <p className="text-[14px] text-muted">
-                Maintenance is about <span className="font-semibold text-text tabular-nums">{suggestion.maintenance.toLocaleString()}</span> calories a day. For your goals (
-                {profile.goals.map(goalLabel).join(', ').toLowerCase()}), Steady suggests {suggestion.adjustmentReason}.
-              </p>
-            </Card>
-          ) : (
-            <Card className="!py-4">
-              <p className="text-[14px] text-muted">Fill in the details above to see suggestions. You can also type your own targets below.</p>
-            </Card>
-          )}
-
-          <ul className="divide-y divide-border overflow-hidden rounded-[20px] bg-surface ring-1 ring-border ring-inset">
-            {NUTRIENT_KEYS.map((k) => {
-              const meta = NUTRIENTS[k]
-              const suggested = suggestion?.targets[k]
-              const differs = suggested !== undefined && String(suggested) !== draft[k]
-              return (
-                <li key={k} className="flex items-center gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <label htmlFor={`target-${k}`} className="block text-[15px]">
-                      {meta.label}
-                      {meta.limit && <span className="ml-2 rounded-md bg-surface-3 px-1.5 py-0.5 align-middle text-[11px] font-medium text-muted">Limit</span>}
-                    </label>
-                    {suggestion && <p className="mt-0.5 text-[12px] text-subtle">{suggestion.why[k]}</p>}
-                    {differs && (
-                      <button type="button" onClick={() => set(k, String(suggested))} className="inline-flex min-h-11 items-center text-[13px] font-medium text-accent">
-                        Use {suggested!.toLocaleString()} {meta.unit === 'kcal' ? 'cal' : meta.unit}
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex w-32 shrink-0 items-center gap-2">
-                    <input
-                      id={`target-${k}`}
-                      className={`${inputClass} !min-h-11 text-right tabular-nums`}
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      placeholder="–"
-                      value={draft[k]}
-                      onChange={(e) => set(k, e.target.value)}
-                    />
-                    <span className="w-8 text-[13px] text-muted">{meta.unit === 'kcal' ? 'cal' : meta.unit}</span>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-          <p className="px-1 text-[13px] text-subtle">Leave any blank to just see the total without a target.</p>
-        </Section>
-
-        <div className="flex flex-col gap-2">
-          <Button block onClick={save}>
-            Save targets
-          </Button>
-          {saved && (
-            <p role="status" className="text-center text-[14px] text-accent">
-              Saved. <Link to="/meals" className="underline">Back to food log</Link>
-            </p>
-          )}
-          <Button
-            block
-            variant="ghost"
-            onClick={() => {
-              setDraft(toDraft(undefined))
-              setSaved(false)
-            }}
-          >
-            Clear all
-          </Button>
-        </div>
+        {policy.canSet ? (
+          <>
+            <Section title="Activity level">
+              <div role="radiogroup" aria-label="Activity level" className="divide-y divide-border overflow-hidden rounded-[20px] bg-surface ring-1 ring-border ring-inset">
+                {(Object.keys(ACTIVITY_LEVELS) as ActivityLevel[]).map((a) => {
+                  const on = profile.activityLevel === a
+                  return (
+                    <button key={a} type="button" role="radio" aria-checked={on} onClick={() => updateProfile({ activityLevel: a })} className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-surface-2">
+                      <span>
+                        <span className="block text-[15px]">{ACTIVITY_LEVELS[a].label}</span>
+                        <span className="mt-0.5 block text-[13px] text-muted">{ACTIVITY_LEVELS[a].hint}</span>
+                      </span>
+                      <span aria-hidden className={`size-5 shrink-0 rounded-full ${on ? 'border-[6px] border-accent' : 'ring-2 ring-neutral ring-inset'}`} />
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="px-1 text-[13px] text-subtle">Count your Steady workouts too.</p>
+            </Section>
+    
+            <Section
+              title="Your targets"
+              action={
+                suggestion && (
+                  <button type="button" onClick={() => setDraft(toDraft(suggestion.targets))} className="inline-flex min-h-11 items-center text-[13px] font-medium text-accent">
+                    Use all suggestions
+                  </button>
+                )
+              }
+            >
+              {suggestion ? (
+                <Card className="!py-4">
+                  <p className="text-[14px] text-muted">
+                    Maintenance is about <span className="font-semibold text-text tabular-nums">{suggestion.maintenance.toLocaleString()}</span> calories a day. For your goals (
+                    {profile.goals.map(goalLabel).join(', ').toLowerCase()}), Steady suggests {suggestion.adjustmentReason}.
+                  </p>
+                </Card>
+              ) : (
+                <Card className="!py-4">
+                  <p className="text-[14px] text-muted">Fill in the details above to see suggestions. You can also type your own targets below.</p>
+                </Card>
+              )}
+    
+              <ul className="divide-y divide-border overflow-hidden rounded-[20px] bg-surface ring-1 ring-border ring-inset">
+                {NUTRIENT_KEYS.map((k) => {
+                  const meta = NUTRIENTS[k]
+                  const suggested = suggestion?.targets[k]
+                  const differs = suggested !== undefined && String(suggested) !== draft[k]
+                  return (
+                    <li key={k} className="flex items-center gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <label htmlFor={`target-${k}`} className="block text-[15px]">
+                          {meta.label}
+                          {meta.limit && <span className="ml-2 rounded-md bg-surface-3 px-1.5 py-0.5 align-middle text-[11px] font-medium text-muted">Limit</span>}
+                        </label>
+                        {suggestion && <p className="mt-0.5 text-[12px] text-subtle">{suggestion.why[k]}</p>}
+                        {differs && (
+                          <button type="button" onClick={() => set(k, String(suggested))} className="inline-flex min-h-11 items-center text-[13px] font-medium text-accent">
+                            Use {suggested!.toLocaleString()} {meta.unit === 'kcal' ? 'cal' : meta.unit}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex w-32 shrink-0 items-center gap-2">
+                        <input
+                          id={`target-${k}`}
+                          className={`${inputClass} !min-h-11 text-right tabular-nums`}
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          placeholder="–"
+                          value={draft[k]}
+                          onChange={(e) => set(k, e.target.value)}
+                        />
+                        <span className="w-8 text-[13px] text-muted">{meta.unit === 'kcal' ? 'cal' : meta.unit}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="px-1 text-[13px] text-subtle">Leave any blank to just see the total without a target.</p>
+            </Section>
+    
+            <div className="flex flex-col gap-2">
+              <Button block onClick={save}>
+                Save targets
+              </Button>
+              {saved && (
+                <p role="status" className="text-center text-[14px] text-accent">
+                  Saved. <Link to="/meals" className="underline">Back to food log</Link>
+                </p>
+              )}
+              <Button
+                block
+                variant="ghost"
+                onClick={() => {
+                  setDraft(toDraft(undefined))
+                  setSaved(false)
+                }}
+              >
+                Clear all
+              </Button>
+            </div>
+          </>
+        ) : isMinorAge ? (
+          <MinorNotice />
+        ) : (
+          <Card className="!py-4">
+            <p className="text-[14px] text-muted">Enter your age above to see suggestions or set targets.</p>
+          </Card>
+        )}
 
         <p className="px-1 text-[12px] leading-relaxed text-subtle">
           Suggestions use the Mifflin-St Jeor equation and common dietary guidelines. They’re estimates for healthy adults, not medical advice. If you’re pregnant, breastfeeding, managing a health condition or

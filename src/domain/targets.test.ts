@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { countMissingExtras, parseOffProduct, scaleNutrition, sumNutrition } from './nutrition'
-import { ageFromBirthYear, birthYearFromAge, mifflinStJeor, suggestTargets, targetsNeedReview, type TargetInputs } from './targets'
+import { MinorTargetsError, ageFromBirthYear, birthYearFromAge, isMinor, mifflinStJeor, suggestTargets, targetsNeedReview, targetsPolicy, type TargetInputs } from './targets'
 
 const man: TargetInputs = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, activity: 'moderate', goals: ['general'] }
 
@@ -86,5 +86,26 @@ describe('extra nutrients', () => {
       nutriments: { 'energy-kcal_serving': 180, proteins_serving: 8, carbohydrates_serving: 20, fat_serving: 7, fiber_serving: 4, sugars_serving: 9, 'saturated-fat_serving': 2.5, sodium_serving: 0.15 },
     })
     expect(p?.nutrition).toMatchObject({ fiberG: 4, sugarG: 9, satFatG: 2.5, sodiumMg: 150 })
+  })
+})
+
+describe('under-18 block', () => {
+  it('refuses to suggest targets for anyone under 18, whatever the goal', () => {
+    for (const age of [5, 12, 15, 17]) {
+      for (const goals of [['weightLoss'], ['strength'], ['general']] as const) {
+        expect(() => suggestTargets({ ...man, age, goals: [...goals] })).toThrow(MinorTargetsError)
+      }
+    }
+    expect(() => suggestTargets({ ...man, age: Number.NaN })).toThrow(MinorTargetsError)
+    expect(() => suggestTargets({ ...man, age: 18 })).not.toThrow()
+  })
+
+  it('never lets a known minor set or see targets', () => {
+    expect(targetsPolicy(15)).toEqual({ canSet: false, canShowSaved: false })
+    expect(targetsPolicy(18)).toEqual({ canSet: true, canShowSaved: true })
+    // Unknown age: can't set new targets until age is entered, but targets saved earlier still show.
+    expect(targetsPolicy(undefined)).toEqual({ canSet: false, canShowSaved: true })
+    expect(isMinor(17)).toBe(true)
+    expect(isMinor(undefined)).toBe(false)
   })
 })

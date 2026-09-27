@@ -1,15 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { type ReactNode, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, ChoiceList, Field, Section, Segmented, inputClass } from '../../components/ui'
+import { Button, Card, ChoiceList, Field, Section, Segmented } from '../../components/ui'
 import { getLatestBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { DIET_STYLES, type DietStyle, MEAL_SHARES } from '../../domain/foodCatalog'
 import { MEAL_ORDER, planDay } from '../../domain/mealPlanner'
 import { MEAL_TYPES, type Nutrition, formatCalories, sumNutrition } from '../../domain/nutrition'
-import { ACTIVITY_LEVELS, type ActivityLevel, NUTRITION_GOALS, type NutritionGoal, type Sex, ageFromBirthYear, birthYearFromAge, nutritionGoalFromGoals, suggestTargets } from '../../domain/targets'
+import { ACTIVITY_LEVELS, type ActivityLevel, NUTRITION_GOALS, type NutritionGoal, type Sex, ageFromBirthYear, isMinor, nutritionGoalFromGoals, suggestTargets } from '../../domain/targets'
 import { useProfile } from '../../lib/profileContext'
-import { HeightField, WeightField } from './BodyInputs'
+import { AgeField, HeightField, WeightField } from './BodyInputs'
+import { MinorNotice } from './MinorNotice'
 import { MealIdeaCard } from './MealIdeaCard'
 import { useUsdaLookup } from './useUsdaLookup'
 
@@ -32,7 +33,8 @@ export function PlanBuilderScreen() {
   const age = profile.birthYear ? ageFromBirthYear(profile.birthYear) : undefined
   const goal = profile.nutritionGoal ?? nutritionGoalFromGoals(profile.goals)
   const diet = profile.dietStyle ?? 'any'
-  const aboutDone = !!(profile.sex && age && profile.heightCm && latest)
+  const minor = isMinor(age)
+  const aboutDone = !!(profile.sex && age && !minor && profile.heightCm && latest)
 
   const canContinue: Record<Step, boolean> = { intro: true, about: aboutDone, activity: !!profile.activityLevel, goal: true, diet: true, result: true }
 
@@ -77,23 +79,11 @@ export function PlanBuilderScreen() {
                   ]}
                 />
               </Field>
-              <Field label="Age">
-                <input
-                  className={inputClass}
-                  type="number"
-                  inputMode="numeric"
-                  min={13}
-                  max={100}
-                  defaultValue={age ?? ''}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value, 10)
-                    if (n >= 13 && n <= 100) void updateProfile({ birthYear: birthYearFromAge(n) })
-                  }}
-                />
-              </Field>
+              <AgeField age={age} />
               <HeightField />
               <WeightField latestKg={latest?.weightKg} latestDate={latest?.date} />
             </Card>
+            {minor && <MinorNotice />}
           </Question>
         )}
 
@@ -119,6 +109,8 @@ export function PlanBuilderScreen() {
             <ChoiceList<DietStyle> label="Diet style" value={diet} onChange={(dietStyle) => updateProfile({ dietStyle })} options={DIET_STYLES} />
           </Question>
         )}
+
+        {step === 'result' && minor && <MinorNotice />}
 
         {step === 'result' && aboutDone && profile.activityLevel && (
           <PlanResult

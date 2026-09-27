@@ -71,6 +71,8 @@ function goalAdjustment(goal: NutritionGoal): { pct: number; reason: string } {
  * and edits; Steady never applies them on its own.
  */
 export function suggestTargets(input: TargetInputs): SuggestedTargets {
+  // Backstop: screens block minors before getting here, but never produce targets for one.
+  if (!(input.age >= MIN_TARGET_AGE)) throw new MinorTargetsError()
   const bmr = mifflinStJeor(input)
   const maintenance = bmr * ACTIVITY_LEVELS[input.activity].factor
   const goal = input.nutritionGoal ?? nutritionGoalFromGoals(input.goals)
@@ -117,6 +119,28 @@ export function suggestTargets(input: TargetInputs): SuggestedTargets {
       sodiumMg: 'Limit: 2,300 mg a day',
     },
   }
+}
+
+/**
+ * Nutrition targets (calories and macros, suggested or typed in) are only for adults. Growing
+ * bodies need enough energy, and formula-based targets, especially deficits, aren't safe for them.
+ */
+export const MIN_TARGET_AGE = 18
+
+export class MinorTargetsError extends Error {
+  constructor() {
+    super(`Nutrition targets are only available for people ${MIN_TARGET_AGE} and older.`)
+  }
+}
+
+export const isMinor = (age: number | undefined) => age !== undefined && age < MIN_TARGET_AGE
+
+/**
+ * Whether targets may be suggested, set or shown. Targets need a known adult age; the one
+ * exception is showing targets that were saved before age was asked (never for a known minor).
+ */
+export function targetsPolicy(age: number | undefined): { canSet: boolean; canShowSaved: boolean } {
+  return { canSet: age !== undefined && age >= MIN_TARGET_AGE, canShowSaved: !isMinor(age) }
 }
 
 export const ageFromBirthYear = (birthYear: number, now = new Date()) => now.getFullYear() - birthYear

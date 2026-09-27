@@ -7,6 +7,7 @@ import { todayISO } from '../../domain/dates'
 import { MEAL_SHARES } from '../../domain/foodCatalog'
 import { type PlannedMeal, mealIdeas } from '../../domain/mealPlanner'
 import { type MealType, MEAL_TYPES, type Nutrition, formatCalories, scaleNutrition, sumNutrition } from '../../domain/nutrition'
+import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { useUsdaLookup } from './useUsdaLookup'
 import { MealIdeaCard } from './MealIdeaCard'
@@ -40,7 +41,7 @@ export function MealIdeasScreen() {
   const lookup = useUsdaLookup()
   const [logging, setLogging] = useState<string | null>(null)
 
-  const t = profile.nutritionTargets
+  const { targets: t, minor } = useNutritionTargets()
   const hasTargets = !!t?.calories && !!t.proteinG
   const daily: Nutrition = hasTargets ? { calories: t!.calories!, proteinG: t!.proteinG!, carbsG: t!.carbsG ?? (t!.calories! * 0.45) / 4, fatG: t!.fatG ?? (t!.calories! * 0.3) / 9 } : GENERIC_DAY
   const budget = entries && hasTargets ? mealBudget(meal, daily, entries) : scaleNutrition(daily, MEAL_SHARES[meal])
@@ -72,7 +73,12 @@ export function MealIdeasScreen() {
             </>
           ) : (
             <>
-              Sized for a typical 2,000-calorie day. <Link to="/meals/plan" className="font-medium text-accent">Build your plan</Link> to size them for you.
+              Sized for a typical 2,000-calorie day.{' '}
+              {!minor && (
+                <>
+                  <Link to="/meals/plan" className="font-medium text-accent">Build your plan</Link> to size them for you.
+                </>
+              )}
             </>
           )}
         </p>

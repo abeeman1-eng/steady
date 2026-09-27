@@ -13,6 +13,7 @@ import { addDays, formatDate, startOfWeek, todayISO } from '../../domain/dates'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
 import { formatCalories, mealForTime, scaleNutrition, sumNutrition } from '../../domain/nutrition'
 import { describePR, formatSetTarget } from '../../lib/format'
+import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { MacroLine } from '../meals/NutritionUi'
 import { WeekDots } from './WeekDots'
@@ -174,7 +175,7 @@ function BackupReminder() {
 }
 
 function FoodTodayCard({ today }: { today: string }) {
-  const { nutritionTargets: targets } = useProfile()
+  const { targets } = useNutritionTargets()
   const entries = useLiveQuery(() => getEntriesForDate(today), [today])
   if (!entries) return null
   const totals = sumNutrition(entries.map((e) => scaleNutrition(e, e.servings)))

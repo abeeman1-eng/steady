@@ -10,6 +10,7 @@ import type { Units } from '../../domain/types'
 import { formatHeight, formatWeight, fromDisplayWeight, weightUnitLabel } from '../../domain/units'
 import { DIET_STYLES } from '../../domain/foodCatalog'
 import { EQUIPMENT_LABELS, experienceLabel, goalLabel } from '../../lib/labels'
+import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { BodyStatsStep } from '../onboarding/BodyStatsStep'
 
@@ -106,7 +107,7 @@ export function SettingsScreen() {
 function MealsSection() {
   const profile = useProfile()
   const enabled = profile.showMeals !== false
-  const t = profile.nutritionTargets
+  const { targets: t, minor } = useNutritionTargets()
   const summary = t && Object.keys(t).length
     ? [t.calories && `${Math.round(t.calories).toLocaleString()} cal`, t.proteinG && `${Math.round(t.proteinG)} g protein`].filter(Boolean).join(' · ') || `${Object.keys(t).length} set`
     : 'Not set'
@@ -117,8 +118,8 @@ function MealsSection() {
       </Card>
       {enabled && (
         <ListGroup>
-          <ListRow title="Build my plan" subtitle="Guided targets and a sample day of meals" to="/meals/plan" />
-          <ListRow title="Daily targets" subtitle={summary} to="/meals/targets" />
+          {!minor && <ListRow title="Build my plan" subtitle="Guided targets and a sample day of meals" to="/meals/plan" />}
+          <ListRow title="Daily targets" subtitle={minor ? 'For 18 and over' : summary} to="/meals/targets" />
           <ListRow title="Meal ideas" subtitle={DIET_STYLES.find((d) => d.value === (profile.dietStyle ?? 'any'))!.label} to="/meals/ideas" />
           <ListRow title="Food log" subtitle="Today’s meals and totals" to="/meals" />
         </ListGroup>

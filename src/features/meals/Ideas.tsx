@@ -18,12 +18,15 @@ const FOCUS_COPY: Record<Recommendation['focus'], string> = {
  * "Ideas for today": the biggest gap left against the user's targets, with everyday foods sized
  * to close it. Without targets, it points to the plan builder instead.
  */
-export function IdeasCard({ totals, targets, diet, date, fiberUnmeasured }: { totals: Nutrition; targets?: Partial<Nutrition>; diet: DietStyle; date: string; fiberUnmeasured?: boolean }) {
+export function IdeasCard({ totals, targets, diet, date, fiberUnmeasured, minor = false }: { totals: Nutrition; targets?: Partial<Nutrition>; diet: DietStyle; date: string; fiberUnmeasured?: boolean; minor?: boolean }) {
   const lookup = useUsdaLookup()
   const [adding, setAdding] = useState<{ food: UsdaFood; grams: number } | null>(null)
   const [chosen, setChosen] = useState<Focus | null>(null)
   const meal: MealType = mealForTime()
   const hasTargets = !!targets && Object.keys(targets).length > 0
+
+  // Under-18s get no plan prompt and no target-based suggestions.
+  if (minor) return null
 
   if (!hasTargets) {
     return (

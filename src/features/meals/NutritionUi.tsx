@@ -65,7 +65,7 @@ export function NutrientPanel({ nutrition }: { nutrition: Nutrition }) {
  * The day at a glance: a calorie ring, macro meters, and the extras. Meters only appear for
  * targets the user has set; wording stays neutral (no red, no scolding) when a limit is passed.
  */
-export function DailySummary({ totals, targets, missing }: { totals: Nutrition; targets?: Partial<Nutrition>; missing: Record<ExtraKey, number> }) {
+export function DailySummary({ totals, targets, missing, minor = false }: { totals: Nutrition; targets?: Partial<Nutrition>; missing: Record<ExtraKey, number>; minor?: boolean }) {
   const cal = targets?.calories
   const remaining = cal ? cal - totals.calories : undefined
   const unlisted = EXTRA_KEYS.filter((k) => missing[k] > 0).map((k) => NUTRIENTS[k].label.toLowerCase())
@@ -128,9 +128,12 @@ export function DailySummary({ totals, targets, missing }: { totals: Nutrition; 
 
       <div className="-mt-2 flex items-center justify-between gap-3 text-[12px] text-subtle">
         <span>{unlisted.length > 0 ? `Some foods don’t list ${unlisted.join(', ')}.` : ''}</span>
-        <Link to={targets && Object.keys(targets).length ? '/meals/targets' : '/meals/plan'} className="inline-flex min-h-11 shrink-0 items-center font-medium text-accent">
-          {targets && Object.keys(targets).length ? 'Edit targets' : 'Build my plan'}
-        </Link>
+        {/* No plan or targets prompts for under-18s. */}
+        {!minor && (
+          <Link to={targets && Object.keys(targets).length ? '/meals/targets' : '/meals/plan'} className="inline-flex min-h-11 shrink-0 items-center font-medium text-accent">
+            {targets && Object.keys(targets).length ? 'Edit targets' : 'Build my plan'}
+          </Link>
+        )}
       </div>
     </Card>
   )
