@@ -9,19 +9,22 @@ import type { Equipment, ExperienceLevel, MainGoal, Units } from '../../domain/t
 import { EXPERIENCE_OPTIONS, GOAL_OPTIONS } from '../../lib/labels'
 import { BodyStatsStep, type BodyStats } from './BodyStatsStep'
 import { PlanPreview } from './PlanPreview'
+import { isEditMode, onboardingSteps, type StepId } from './onboardingSteps'
 import { RunningGoalStep } from './RunningGoalStep'
 
 type Draft = Partial<OnboardingAnswers>
 
 const toggle = <T,>(list: T[] | undefined, item: T): T[] => (list?.includes(item) ? list.filter((x) => x !== item) : [...(list ?? []), item])
-type StepId = 'experience' | 'goal' | 'days' | 'equipment' | 'units' | 'body' | 'running' | 'review'
+
 
 export function OnboardingScreen() {
   const [params] = useSearchParams()
-  const editing = params.get('edit') === '1'
   const existing = useLiveQuery(getProfile)
 
   if (existing === undefined) return null
+  // A first-time visitor on an "?edit=1" link gets the full flow, with the parameter dropped.
+  if (params.get('edit') === '1' && !existing) return <Navigate to="/onboarding" replace />
+  const editing = isEditMode(params.get('edit'), !!existing)
   if (!editing && existing) return <Navigate to="/" replace />
   return <OnboardingFlow editing={editing} initial={editing && existing ? existing : { equipment: [] }} />
 }
@@ -42,14 +45,8 @@ function OnboardingFlow({ editing, initial }: { editing: boolean; initial: Draft
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // When editing, body stats live in settings, so the flow only covers training answers.
-  const steps = useMemo<StepId[]>(() => {
-    const s: StepId[] = ['experience', 'goal', 'days', 'equipment']
-    if (!editing) s.push('units', 'body')
-    if (draft.goals?.includes('running')) s.push('running')
-    s.push('review')
-    return s
-  }, [editing, draft.goals])
+  const running = !!draft.goals?.includes('running')
+  const steps = useMemo(() => onboardingSteps({ editing, running }), [editing, running])
 
   const step = steps[Math.min(stepIndex, steps.length - 1)]
   const set = (changes: Draft) => setDraft((d) => ({ ...d, ...changes }))
@@ -190,6 +187,21 @@ function OnboardingFlow({ editing, initial }: { editing: boolean; initial: Draft
                 {error}
               </p>
             )}
+          </Question>
+        )}
+
+        {step === 'review' && !plan && (
+          <Question title="A few answers are missing" hint="Steady needs these before it can build your plan.">
+            <Button
+              block
+              variant="secondary"
+              onClick={() => {
+                const missing = steps.findIndex((s) => !canContinue[s])
+                setStepIndex(missing >= 0 ? missing : 0)
+              }}
+            >
+              Go to the first missing question
+            </Button>
           </Question>
         )}
       </div>
