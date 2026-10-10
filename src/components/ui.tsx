@@ -33,9 +33,11 @@ export function Card({ children, className = '' }: { children?: ReactNode; class
   return <section className={`rounded-[20px] bg-surface p-5 ring-1 ring-border ring-inset ${className}`}>{children}</section>
 }
 
-export function Screen({ title, eyebrow, children, action }: { title: string; eyebrow?: ReactNode; children: ReactNode; action?: ReactNode }) {
+/** `back` is required on any screen that isn't a main tab (see "Navigation requirements" in the README). */
+export function Screen({ title, eyebrow, children, action, back }: { title: string; eyebrow?: ReactNode; children: ReactNode; action?: ReactNode; back?: ReactNode }) {
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
+      {back && <div className="mb-2">{back}</div>}
       <header className="mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0">
           {eyebrow && <p className="mb-1 text-[13px] font-medium text-muted">{eyebrow}</p>}

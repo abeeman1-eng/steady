@@ -13,6 +13,7 @@ import { AgeField, HeightField, WeightField } from './BodyInputs'
 import { MinorNotice } from './MinorNotice'
 import { MealIdeaCard } from './MealIdeaCard'
 import { useUsdaLookup } from './useUsdaLookup'
+import { BackButton } from '../../components/BackButton'
 
 type Step = 'intro' | 'about' | 'activity' | 'goal' | 'diet' | 'result'
 const STEPS: Step[] = ['intro', 'about', 'activity', 'goal', 'diet', 'result']
@@ -24,7 +25,6 @@ const STEPS: Step[] = ['intro', 'about', 'activity', 'goal', 'diet', 'result']
  */
 export function PlanBuilderScreen() {
   const profile = useProfile()
-  const navigate = useNavigate()
   const latest = useLiveQuery(getLatestBodyWeight)
   const [step, setStep] = useState<Step>('intro')
   const index = STEPS.indexOf(step)
@@ -41,9 +41,13 @@ export function PlanBuilderScreen() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
       <div className="flex min-h-11 items-center gap-3">
-        <button type="button" onClick={() => (index === 0 ? navigate(-1) : go(-1))} className="-ml-1 inline-flex min-h-11 items-center px-1 text-[15px] font-medium text-accent">
-          ‹ {index === 0 ? 'Cancel' : 'Back'}
-        </button>
+        {index === 0 ? (
+          <BackButton parent="/meals" parentLabel="Food log" />
+        ) : (
+          <button type="button" onClick={() => go(-1)} className="-ml-1 inline-flex min-h-11 items-center px-1 text-[15px] font-medium text-accent">
+            ‹ Back
+          </button>
+        )}
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3" role="progressbar" aria-label="Plan builder progress" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={index + 1}>
           <div className="h-full rounded-full bg-accent transition-all duration-300" style={{ width: `${((index + 1) / STEPS.length) * 100}%` }} />
         </div>

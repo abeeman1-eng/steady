@@ -1,22 +1,18 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
+import { useModalDialog } from './useModalDialog'
 
 /**
  * Modal built on <dialog> (focus trapping, Escape to close). A bottom sheet on phones, centered
  * on wider screens. Mount it to open; `onClose` fires on Escape, backdrop tap or Close.
  */
 export function Sheet({ title, onClose, children, full = false }: { title: string; onClose: () => void; children: ReactNode; full?: boolean }) {
-  const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    const d = ref.current
-    d?.showModal()
-    return () => d?.close()
-  }, [])
+  const { ref, handleClose } = useModalDialog(onClose)
 
   return (
     <dialog
       ref={ref}
       aria-label={title}
-      onClose={onClose}
+      onClose={handleClose}
       onClick={(e) => e.target === ref.current && onClose()}
       className={`m-0 mt-auto w-full max-w-none bg-surface p-0 text-text ring-1 ring-border backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:m-auto sm:max-w-lg sm:rounded-[24px] ${
         full ? 'h-dvh max-h-none sm:h-[85dvh]' : 'max-h-[90dvh] rounded-t-[24px]'

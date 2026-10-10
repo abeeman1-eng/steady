@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { DifficultyPicker } from '../../components/DifficultyPicker'
 import { Button, Field, inputClass } from '../../components/ui'
 import { finishWorkout, getSetsForWorkout, getWorkout } from '../../data/repositories/workoutRepo'
+import { BackButton } from '../../components/BackButton'
 
 export function FinishScreen() {
   const { workoutId = '' } = useParams()
@@ -35,9 +36,7 @@ export function FinishScreen() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <header className="flex items-center justify-between">
-        <button type="button" onClick={() => navigate(-1)} className="min-h-11 rounded-xl px-2 text-accent">
-          ← Back
-        </button>
+        <BackButton parent={`/session/${workoutId}`} parentLabel="Workout" />
       </header>
       <div>
         <h1 className="text-[28px] leading-tight font-semibold">Nice work</h1>

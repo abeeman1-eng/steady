@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { DifficultyPicker } from '../../components/DifficultyPicker'
 import { Button, Card, Field, PRBadge, inputClass } from '../../components/ui'
 import { getSetsForWorkout, getWorkout, updateWorkoutDetails } from '../../data/repositories/workoutRepo'
@@ -10,6 +10,7 @@ import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
 import { formatWeight } from '../../domain/units'
 import { formatDuration } from '../../lib/format'
 import { useProfile } from '../../lib/profileContext'
+import { BackButton } from '../../components/BackButton'
 
 export function WorkoutDetailScreen() {
   const { workoutId = '' } = useParams()
@@ -25,9 +26,7 @@ export function WorkoutDetailScreen() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28">
-      <Link to="/history" className="inline-flex min-h-11 items-center text-accent">
-        ← History
-      </Link>
+      <BackButton parent="/history" parentLabel="History" className="mb-2" />
       <h1 className="text-[28px] leading-tight font-semibold">{workout.name}</h1>
       <p className="mb-4 text-muted">{formatDate(workout.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
 

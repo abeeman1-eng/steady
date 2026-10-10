@@ -11,6 +11,7 @@ import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { useUsdaLookup } from './useUsdaLookup'
 import { MealIdeaCard } from './MealIdeaCard'
+import { BackButton } from '../../components/BackButton'
 
 /** Used only to size ideas when no targets are set yet. */
 const GENERIC_DAY: Nutrition = { calories: 2000, proteinG: 100, carbsG: 230, fatG: 70 }
@@ -60,9 +61,7 @@ export function MealIdeasScreen() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
-      <button type="button" onClick={() => navigate(-1)} className="-ml-1 mb-2 inline-flex min-h-11 items-center px-1 text-[15px] font-medium text-accent">
-        ‹ Back
-      </button>
+      <BackButton parent={`/meals?date=${date}`} parentLabel="Food log" className="mb-2" />
       <header className="mb-5">
         <h1 className="text-[28px] leading-tight font-semibold">Meal ideas</h1>
         <p className="mt-2 text-[15px] text-muted">

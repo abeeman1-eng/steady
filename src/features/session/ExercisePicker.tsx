@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Toggle, inputClass } from '../../components/ui'
 import { EXERCISE_LIBRARY, EXERCISES_BY_ID, expandEquipment, isAvailable } from '../../domain/exerciseLibrary'
 import type { Equipment, ExerciseDef } from '../../domain/types'
+import { useModalDialog } from '../../components/useModalDialog'
 
 const EQUIPMENT_LABEL: Record<Equipment, string> = { gym: 'Gym', dumbbells: 'Dumbbells', bands: 'Bands', bodyweight: 'Bodyweight' }
 
@@ -21,13 +22,7 @@ export function ExercisePicker({
 }) {
   const [query, setQuery] = useState('')
   const [mineOnly, setMineOnly] = useState(true)
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const d = dialogRef.current
-    d?.showModal()
-    return () => d?.close()
-  }, [])
+  const { ref: dialogRef, handleClose } = useModalDialog(onClose)
 
   const available = useMemo(() => expandEquipment(equipment), [equipment])
   const matches = (e: ExerciseDef) =>
@@ -42,7 +37,7 @@ export function ExercisePicker({
   return (
     <dialog
       ref={dialogRef}
-      onClose={onClose}
+      onClose={handleClose}
       aria-label={title}
       className="m-0 h-dvh max-h-none w-full max-w-none bg-bg p-0 text-text backdrop:bg-black/60 sm:m-auto sm:h-[85dvh] sm:max-w-xl sm:rounded-2xl"
     >

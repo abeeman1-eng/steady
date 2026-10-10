@@ -12,6 +12,7 @@ import { vibrate } from '../../lib/alerts'
 import { FoodConfirmSheet, type FoodCandidate } from './FoodConfirmSheet'
 import { ManualFoodSheet } from './ManualFoodSheet'
 import { MacroLine } from './NutritionUi'
+import { BackButton } from '../../components/BackButton'
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'))
 
@@ -85,9 +86,7 @@ export function AddFoodScreen() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28">
-      <button type="button" onClick={() => navigate(-1)} className="inline-flex min-h-11 items-center text-accent">
-        ← Back
-      </button>
+      <BackButton parent={`/meals?date=${date}`} parentLabel="Food log" className="mb-2" />
       <h1 className="text-[28px] leading-tight font-semibold">Add to {mealLabel}</h1>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Meal">
         {MEAL_TYPES.map((m) => (

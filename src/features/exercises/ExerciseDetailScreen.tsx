@@ -1,14 +1,14 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Card, SectionTitle } from '../../components/ui'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
 import { MUSCLE_LABELS } from '../../domain/exerciseSearch'
 import { EQUIPMENT_LABELS } from '../../lib/labels'
+import { BackButton } from '../../components/BackButton'
 
 const DIFFICULTY_LABEL = { 1: 'Beginner-friendly', 2: 'Intermediate', 3: 'Advanced technique' } as const
 
 export function ExerciseDetailScreen() {
   const { exerciseId = '' } = useParams()
-  const navigate = useNavigate()
   const exercise = EXERCISES_BY_ID.get(exerciseId)
 
   if (!exercise) {
@@ -27,10 +27,8 @@ export function ExerciseDetailScreen() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28">
-      {/* Back returns to wherever the user came from: search results, the plan, or a workout. */}
-      <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/exercises'))} className="inline-flex min-h-11 items-center text-accent">
-        ← Back
-      </button>
+      {/* Back returns to wherever the user came from (search results, the plan, a workout), or the guide. */}
+      <BackButton parent="/exercises" parentLabel="Exercise guide" className="mb-2" />
       <h1 className="text-[28px] leading-tight font-semibold">{exercise.name}</h1>
       <p className="mt-1 text-muted">{exercise.description}</p>
       <ul className="mt-3 flex flex-wrap gap-2 text-sm" aria-label="Details">

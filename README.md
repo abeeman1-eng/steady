@@ -68,6 +68,12 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 - Tracked nutrients: calories, protein, carbs, fat, plus fiber, sugar, saturated fat and sodium. Extras a source doesn't list are stored as missing (shown "–"), never as 0.
 - **Suggested targets** (`src/domain/targets.ts`) use Mifflin-St Jeor with an activity factor, a goal adjustment (−15% for weight loss, +5% for strength), a 1,200 kcal / resting-energy floor, protein at 1.2–1.6 g/kg of a BMI-25-capped reference weight, fat at 30%, carbs as the remainder, fiber at 14 g per 1,000 kcal, and limits for sugar and saturated fat (10% of calories) and sodium (2,300 mg). The user reviews and edits every value; nothing is applied automatically.
 
+### Navigation requirements
+
+- **Every tracking page that isn't a main tab must have a visible Back or Home action** (`BackButton`). It returns to the previous page when there is one, and otherwise to a named parent page, so a page opened fresh from the home screen or a link always has a way back to Today. A bare `navigate(-1)` is not allowed.
+- **Test every new tracking page after entering information:** open it fresh, log or save something, and confirm Back or Home still leads to Today. Then repeat from inside the app and at 375 px wide.
+- `src/app.navigation.test.ts` checks every route in `App.tsx` for both rules, so a new page without a way back fails CI. The same requirements are in `CLAUDE.md` for AI-assisted changes.
+
 ### Safety limits
 
 - **No nutrition targets under 18.** Calorie and macro targets (suggested or typed in), the plan builder and target-based food ideas require a known age of 18+. Entering an age under 18 clears any saved targets, and `suggestTargets` itself throws for minors as a backstop. Food logging, meal ideas and training still work. Policy lives in `targetsPolicy` (`src/domain/targets.ts`) and every screen reads targets through `useNutritionTargets`.

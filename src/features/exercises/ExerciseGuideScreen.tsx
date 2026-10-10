@@ -3,6 +3,7 @@ import { Card, ListGroup, ListRow, Screen, SectionTitle, inputClass } from '../.
 import { EXERCISE_LIBRARY } from '../../domain/exerciseLibrary'
 import { MUSCLE_LABELS, searchExercises } from '../../domain/exerciseSearch'
 import type { ExerciseDef, MovementPattern } from '../../domain/types'
+import { BackButton } from '../../components/BackButton'
 
 const BROWSE_GROUPS: { title: string; patterns: MovementPattern[] }[] = [
   { title: 'Legs and glutes', patterns: ['squat', 'hinge', 'lunge'] },
@@ -18,7 +19,7 @@ export function ExerciseGuideScreen() {
   const results = query.trim() ? searchExercises(query, EXERCISE_LIBRARY) : null
 
   return (
-    <Screen title="Exercise guide">
+    <Screen title="Exercise guide" back={<BackButton parent="/plan" parentLabel="Plan" />}>
       <p className="-mt-2 text-muted">Type an exercise to see how to do it step by step and which muscles it works.</p>
       <input
         className={inputClass}

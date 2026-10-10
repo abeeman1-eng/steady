@@ -13,6 +13,7 @@ import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { IdeasCard } from './Ideas'
 import { DailySummary, MacroLine, NutrientPanel } from './NutritionUi'
+import { BackButton } from '../../components/BackButton'
 
 const entryNutrition = (e: MealEntryRecord) => scaleNutrition(e, e.servings)
 
@@ -33,6 +34,7 @@ export function MealsScreen() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
+      <BackButton parent="/" parentLabel="Today" className="mb-2" />
       <header className="mb-6 flex items-end justify-between gap-3">
         <div>
           <p className="mb-1 text-[13px] font-medium text-muted">{formatDate(date, { weekday: 'long', month: 'long', day: 'numeric' })}</p>

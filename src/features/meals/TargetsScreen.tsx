@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Button, Card, Field, Section, Segmented, inputClass } from '../../components/ui'
 import { getLatestBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
@@ -10,6 +10,7 @@ import { goalLabel } from '../../lib/labels'
 import { useProfile } from '../../lib/profileContext'
 import { AgeField, HeightField, WeightField } from './BodyInputs'
 import { MinorNotice } from './MinorNotice'
+import { BackButton } from '../../components/BackButton'
 
 type Draft = Record<NutrientKey, string>
 
@@ -17,7 +18,6 @@ const toDraft = (t?: Partial<Nutrition>): Draft => Object.fromEntries(NUTRIENT_K
 
 export function TargetsScreen() {
   const profile = useProfile()
-  const navigate = useNavigate()
   const latest = useLiveQuery(getLatestBodyWeight)
   const [draft, setDraft] = useState<Draft>(() => toDraft(profile.nutritionTargets))
   const [saved, setSaved] = useState(false)
@@ -53,9 +53,7 @@ export function TargetsScreen() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
-      <button type="button" onClick={() => navigate(-1)} className="-ml-1 mb-2 inline-flex min-h-11 items-center px-1 text-[15px] font-medium text-accent">
-        ‹ Back
-      </button>
+      <BackButton parent="/meals" parentLabel="Food log" className="mb-2" />
       <header className="mb-6">
         <h1 className="text-[28px] leading-tight font-semibold">Daily targets</h1>
         <p className="mt-2 text-[15px] text-muted">Steady can suggest targets from your details. You decide the numbers, and you can edit any of them.</p>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui'
 import { type ScanSession, startScanning } from './scanEngine'
+import { useModalDialog } from '../../components/useModalDialog'
 
 type Stage = 'checking' | 'explain' | 'scanning' | 'denied' | 'unsupported'
 
@@ -17,18 +18,12 @@ export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: {
   const [mirrored, setMirrored] = useState(false)
   const [struggling, setStruggling] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const { ref: dialogRef, handleClose } = useModalDialog(onClose)
   // Held in a ref so a new callback from the parent doesn't restart the camera.
   const onDetectedRef = useRef(onDetected)
   useEffect(() => {
     onDetectedRef.current = onDetected
   }, [onDetected])
-
-  useEffect(() => {
-    const d = dialogRef.current
-    d?.showModal()
-    return () => d?.close()
-  }, [])
 
   // Skip the explanation if camera access was already granted.
   useEffect(() => {
@@ -64,7 +59,7 @@ export default function BarcodeScanner({ onDetected, onTypeInstead, onClose }: {
   }, [stage])
 
   return (
-    <dialog ref={dialogRef} onClose={onClose} aria-label="Scan barcode" className="m-0 h-dvh max-h-none w-full max-w-none bg-black p-0 text-white backdrop:bg-black">
+    <dialog ref={dialogRef} onClose={handleClose} aria-label="Scan barcode" className="m-0 h-dvh max-h-none w-full max-w-none bg-black p-0 text-white backdrop:bg-black">
       <div className="relative flex h-full flex-col">
         <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <h2 className="text-lg font-semibold">Scan barcode</h2>
