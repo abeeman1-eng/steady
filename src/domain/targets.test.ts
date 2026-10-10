@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { countMissingExtras, parseOffProduct, scaleNutrition, sumNutrition } from './nutrition'
-import { MinorTargetsError, ageFromBirthYear, birthYearFromAge, isMinor, mifflinStJeor, suggestTargets, targetsNeedReview, targetsPolicy, type TargetInputs } from './targets'
+import { MinorTargetsError, TargetsBlockedError, ageFromBirth, isMinor, needsBirthMonth, mifflinStJeor, suggestTargets, targetsNeedReview, targetsPolicy, type TargetInputs } from './targets'
 
 const man: TargetInputs = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, activity: 'moderate', goals: ['general'] }
 
@@ -56,8 +56,21 @@ describe('suggestTargets', () => {
 
 describe('age and review helpers', () => {
   const now = new Date(2026, 8, 26)
-  it('converts age to birth year and back', () => {
-    expect(ageFromBirthYear(birthYearFromAge(31, now), now)).toBe(31)
+  it('counts the birth month, so a December 2008 birthday is still 17 in October 2026', () => {
+    const oct2026 = new Date(2026, 9, 10)
+    expect(ageFromBirth({ birthYear: 2008, birthMonth: 12 }, oct2026)).toBe(17)
+    expect(isMinor(ageFromBirth({ birthYear: 2008, birthMonth: 12 }, oct2026))).toBe(true)
+    expect(ageFromBirth({ birthYear: 2008, birthMonth: 12 }, new Date(2027, 0, 2))).toBe(18)
+    expect(ageFromBirth({ birthYear: 2008, birthMonth: 3 }, oct2026)).toBe(18)
+  })
+
+  it('errs young during the birth month and when the month is unknown', () => {
+    const oct2026 = new Date(2026, 9, 10)
+    expect(ageFromBirth({ birthYear: 2008, birthMonth: 10 }, oct2026)).toBe(17) // birthday may not have happened yet
+    expect(ageFromBirth({ birthYear: 2008, birthMonth: 10 }, new Date(2026, 10, 1))).toBe(18)
+    expect(ageFromBirth({ birthYear: 2008 }, oct2026)).toBe(17)
+    expect(needsBirthMonth({ birthYear: 2008 })).toBe(true)
+    expect(ageFromBirth({}, now)).toBeUndefined()
   })
 
   it('flags targets for review after a meaningful weight change only', () => {
@@ -101,11 +114,34 @@ describe('under-18 block', () => {
   })
 
   it('never lets a known minor set or see targets', () => {
-    expect(targetsPolicy(15)).toEqual({ canSet: false, canShowSaved: false })
+    expect(targetsPolicy(15)).toEqual({ canSet: false, canShowSaved: false, blockedBy: 'minor' })
     expect(targetsPolicy(18)).toEqual({ canSet: true, canShowSaved: true })
     // Unknown age: can't set new targets until age is entered, but targets saved earlier still show.
     expect(targetsPolicy(undefined)).toEqual({ canSet: false, canShowSaved: true })
     expect(isMinor(17)).toBe(true)
     expect(isMinor(undefined)).toBe(false)
+  })
+})
+
+describe('health considerations', () => {
+  it('lowers the sodium limit for high blood pressure and saturated fat for high cholesterol', () => {
+    const base = suggestTargets(man).targets
+    const bp = suggestTargets({ ...man, health: ['highBloodPressure'] })
+    expect(bp.targets.sodiumMg).toBe(1500)
+    expect(bp.why.sodiumMg).toMatch(/1,500/)
+    const chol = suggestTargets({ ...man, health: ['highCholesterol'] })
+    expect(chol.targets.satFatG).toBe(Math.round((base.calories * 0.06) / 9))
+    expect(chol.targets.calories).toBe(base.calories) // calories and macros unchanged
+  })
+
+  it('refuses targets for kidney disease, pregnancy or a history of disordered eating', () => {
+    for (const c of ['kidneyDisease', 'pregnancy', 'eatingDisorder'] as const) {
+      expect(() => suggestTargets({ ...man, health: [c] })).toThrow(TargetsBlockedError)
+      expect(targetsPolicy(30, [c])).toEqual({ canSet: false, canShowSaved: false, blockedBy: c })
+    }
+  })
+
+  it('allergies and the other conditions don’t block targets', () => {
+    expect(targetsPolicy(30, ['dairy', 'peanut', 'diabetes', 'highBloodPressure'])).toEqual({ canSet: true, canShowSaved: true })
   })
 })

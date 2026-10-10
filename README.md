@@ -50,7 +50,7 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 ## Build phases
 
 - [x] **Phase 1: Core strength.** PWA shell, onboarding, exercise library, strength plan generation, set logging, rest timer, difficulty and notes, PRs and est. 1RM, export/import
-- [ ] **Phase 2: Running.** Running plan generation, unrealistic-goal flag, missed-day marking, manual run logging, strength progression suggestions
+- [ ] **Phase 2: Running.** Running plan generation, unrealistic-goal flag, missed-day marking, manual run logging, ~~strength progression suggestions~~ (done)
 - [ ] **Phase 3: Progress and Strava.** Charts, consistency calendar, Strava connect and import
 - [x] **Phase 4: Meals.** Food search, barcode scan, manual entry, favorites, daily totals, optional targets (built ahead of Phases 2 and 3)
 
@@ -67,6 +67,19 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 - Logged entries copy the food's name and nutrition, so editing a food never rewrites past days.
 - Tracked nutrients: calories, protein, carbs, fat, plus fiber, sugar, saturated fat and sodium. Extras a source doesn't list are stored as missing (shown "–"), never as 0.
 - **Suggested targets** (`src/domain/targets.ts`) use Mifflin-St Jeor with an activity factor, a goal adjustment (−15% for weight loss, +5% for strength), a 1,200 kcal / resting-energy floor, protein at 1.2–1.6 g/kg of a BMI-25-capped reference weight, fat at 30%, carbs as the remainder, fiber at 14 g per 1,000 kcal, and limits for sugar and saturated fat (10% of calories) and sodium (2,300 mg). The user reviews and edits every value; nothing is applied automatically.
+
+### Progression (how the 1–10 rating is used)
+
+- When a workout starts, `suggestProgression` (`src/domain/progression.ts`) looks at each exercise's last two sessions and their ratings. If every set hit the top of the rep range and the session was rated 8 or lower, it suggests +5 lb upper / +10 lb lower body (+2.5 / +5 kg), +2 reps for bodyweight moves or +5 s for holds. Rated 9–10, it holds instead. After missed reps two sessions in a row, it offers a 10% drop.
+- Suggestions appear as a "Suggestions for today" card in the workout. Nothing changes until the user taps Accept; "Keep current" dismisses it.
+
+### Health considerations
+
+- Optional checklist (in Build my plan and Settings → Health considerations), saved only on the device.
+- **Allergies** (dairy, gluten, peanuts, tree nuts, eggs, fish, shellfish, soy, sesame) remove matching foods from every suggestion and meal idea. A test checks that every diet style with any single allergy still has an idea for every meal.
+- **High blood pressure** lowers the sodium limit to 1,500 mg; **high cholesterol** lowers saturated fat to 6% of calories (both American Heart Association guidance); **diabetes** ranks high-fiber, low-sugar foods higher. These only steer suggestions; no food is removed.
+- **Kidney disease, pregnancy/breastfeeding and a history of disordered eating** switch targets off entirely (like the under-18 block) and clear any saved targets.
+- Age uses birth month and year, erring young when the day is unknown, so the under-18 block can't be passed early.
 
 ### Navigation requirements
 
@@ -90,6 +103,16 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 ### Design
 
 Dark theme built on color tokens in `src/theme/tokens.css` and a small component set in `src/components/ui.tsx` (grouped lists, segmented control, ring and meter). Inter is self-hosted so it works offline. Macro colors are data-viz categorical slots validated for contrast and color-vision deficiency on the app's surface, and always appear next to a text label.
+
+## What Steady does not yet do
+
+- **Running plans:** running goals get easy run/walk days, not a dated plan toward a race (Phase 2), and there's no unrealistic-goal warning or manual run logging yet.
+- **Missed days:** unlogged planned sessions aren't marked "Missed" yet.
+- **Charts:** no strength, running, body-weight or consistency charts yet (Phase 3). Progress shows PR history only.
+- **Strava:** no connection or import yet (Phase 3).
+- **Accounts and sync:** data lives on one device and browser; there's no login, cloud backup or friend sharing (export/import is the backup).
+- **Packaged-food text search:** depends on Open Food Facts search endpoints that are currently blocked or down for browsers; barcode lookup works.
+- **Medical guidance:** health considerations tailor suggestions but aren't medical advice, and age is self-reported, not verified.
 
 ## Deploying
 

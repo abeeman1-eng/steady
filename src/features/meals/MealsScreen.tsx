@@ -22,7 +22,7 @@ export function MealsScreen() {
   const today = todayISO()
   const date = params.get('date') ?? today
   const profile = useProfile()
-  const { targets, minor } = useNutritionTargets()
+  const { targets, blocked: minor, foodPrefs } = useNutritionTargets()
   const entries = useLiveQuery(() => getEntriesForDate(date), [date])
   const latestWeight = useLiveQuery(getLatestBodyWeight)
   const [editing, setEditing] = useState<MealEntryRecord | null>(null)
@@ -64,7 +64,7 @@ export function MealsScreen() {
 
           <DailySummary totals={sumNutrition(entries.map(entryNutrition))} targets={targets} missing={countMissingExtras(entries)} minor={minor} />
 
-          {date === today && <IdeasCard totals={sumNutrition(entries.map(entryNutrition))} targets={targets} diet={profile.dietStyle ?? 'any'} date={date} fiberUnmeasured={countMissingExtras(entries).fiberG > 0} minor={minor} />}
+          {date === today && <IdeasCard totals={sumNutrition(entries.map(entryNutrition))} targets={targets} prefs={foodPrefs} date={date} fiberUnmeasured={countMissingExtras(entries).fiberG > 0} minor={minor} />}
 
           {MEAL_TYPES.map((m) => {
             const items = entries.filter((e) => e.mealType === m.value)

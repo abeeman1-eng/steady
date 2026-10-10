@@ -8,7 +8,6 @@ import { MEAL_SHARES } from '../../domain/foodCatalog'
 import { type PlannedMeal, mealIdeas } from '../../domain/mealPlanner'
 import { type MealType, MEAL_TYPES, type Nutrition, formatCalories, scaleNutrition, sumNutrition } from '../../domain/nutrition'
 import { useNutritionTargets } from '../../lib/useNutritionTargets'
-import { useProfile } from '../../lib/profileContext'
 import { useUsdaLookup } from './useUsdaLookup'
 import { MealIdeaCard } from './MealIdeaCard'
 import { BackButton } from '../../components/BackButton'
@@ -35,18 +34,17 @@ function mealBudget(meal: MealType, targets: Nutrition, entries: (Nutrition & { 
 export function MealIdeasScreen() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const profile = useProfile()
   const meal: MealType = isMeal(params.get('meal')) ? (params.get('meal') as MealType) : 'lunch'
   const date = params.get('date') ?? todayISO()
   const entries = useLiveQuery(() => getEntriesForDate(date), [date])
   const lookup = useUsdaLookup()
   const [logging, setLogging] = useState<string | null>(null)
 
-  const { targets: t, minor } = useNutritionTargets()
+  const { targets: t, blocked: minor, foodPrefs } = useNutritionTargets()
   const hasTargets = !!t?.calories && !!t.proteinG
   const daily: Nutrition = hasTargets ? { calories: t!.calories!, proteinG: t!.proteinG!, carbsG: t!.carbsG ?? (t!.calories! * 0.45) / 4, fatG: t!.fatG ?? (t!.calories! * 0.3) / 9 } : GENERIC_DAY
   const budget = entries && hasTargets ? mealBudget(meal, daily, entries) : scaleNutrition(daily, MEAL_SHARES[meal])
-  const ideas = lookup ? mealIdeas(meal, budget, profile.dietStyle ?? 'any', lookup.per100, 4) : null
+  const ideas = lookup ? mealIdeas(meal, budget, foodPrefs, lookup.per100, 4) : null
   const mealLabel = MEAL_TYPES.find((m) => m.value === meal)!.label
 
   async function log(idea: PlannedMeal) {

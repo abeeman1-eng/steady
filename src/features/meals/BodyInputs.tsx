@@ -3,31 +3,64 @@ import { Button, Field, inputClass } from '../../components/ui'
 import { addBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { formatDate, todayISO } from '../../domain/dates'
-import { birthYearFromAge, isMinor } from '../../domain/targets'
+import { ageFromBirth, isMinor, needsBirthMonth } from '../../domain/targets'
 import { cmToFeetInches, feetInchesToCm, formatHeight, formatWeight, fromDisplayWeight, weightUnitLabel } from '../../domain/units'
 import { useProfile } from '../../lib/profileContext'
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
 /**
- * Age, stored as a birth year. Accepts 5–100 so younger users see the under-18 notice instead of
- * a field that silently ignores them. Entering an age under 18 clears any saved nutrition targets.
+ * Birth month and year. Age is worked out to the month (ageFromBirth), so someone born in
+ * December 2008 isn't treated as 18 until December 2026. Years back to age 5 are accepted so
+ * younger users see the under-18 notice instead of a field that ignores them. If the result is
+ * under 18, any saved nutrition targets are cleared.
  */
-export function AgeField({ age }: { age: number | undefined }) {
+export function BirthDateField() {
+  const profile = useProfile()
+  const thisYear = new Date().getFullYear()
+
+  function save(changes: { birthYear?: number; birthMonth?: number }) {
+    const next = { birthYear: profile.birthYear, birthMonth: profile.birthMonth, ...changes }
+    const minor = isMinor(ageFromBirth(next))
+    void updateProfile(minor ? { ...changes, nutritionTargets: undefined, nutritionTargetsBasis: undefined } : changes)
+  }
+
   return (
-    <Field label="Age">
-      <input
-        className={inputClass}
-        type="number"
-        inputMode="numeric"
-        min={5}
-        max={100}
-        defaultValue={age ?? ''}
-        onChange={(e) => {
-          const n = parseInt(e.target.value, 10)
-          if (!(n >= 5 && n <= 100)) return
-          void updateProfile(isMinor(n) ? { birthYear: birthYearFromAge(n), nutritionTargets: undefined, nutritionTargetsBasis: undefined } : { birthYear: birthYearFromAge(n) })
-        }}
-      />
-    </Field>
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1.5 text-[13px] font-medium text-muted">Birth month and year</legend>
+      <div className="grid grid-cols-[3fr_2fr] gap-2">
+        <select
+          aria-label="Birth month"
+          value={profile.birthMonth ?? ''}
+          onChange={(e) => e.target.value && save({ birthMonth: Number(e.target.value) })}
+          className={`${inputClass} appearance-none`}
+        >
+          <option value="" disabled>
+            Month
+          </option>
+          {MONTHS.map((m, i) => (
+            <option key={m} value={i + 1}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <input
+          className={inputClass}
+          type="number"
+          inputMode="numeric"
+          aria-label="Birth year"
+          placeholder="Year"
+          min={thisYear - 100}
+          max={thisYear - 5}
+          defaultValue={profile.birthYear ?? ''}
+          onChange={(e) => {
+            const y = parseInt(e.target.value, 10)
+            if (y >= thisYear - 100 && y <= thisYear - 5) save({ birthYear: y })
+          }}
+        />
+      </div>
+      {needsBirthMonth(profile) && <span className="text-xs text-subtle">Add your birth month so your age is exact.</span>}
+    </fieldset>
   )
 }
 

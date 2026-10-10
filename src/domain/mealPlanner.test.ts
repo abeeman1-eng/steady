@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import usda from '../data/seed/usdaFoods.json'
 import { CATALOG, type DietStyle, TEMPLATES, allowedFor } from './foodCatalog'
+import { ALLERGENS } from './health'
 import { MEAL_ORDER, mealIdeas, mealTarget, planDay, portionLabel, rankGaps, recommendFoods, resolveTemplate, type Per100 } from './mealPlanner'
 import { type UsdaFood, sumNutrition, usdaPer100g } from './nutrition'
 import { suggestTargets } from './targets'
@@ -34,7 +35,7 @@ describe('planDay', () => {
   it.each(DIETS.flatMap((d) => [[d, 'woman', woman], [d, 'man', man]] as const))('%s plan for the %s lands near the targets', (diet, _who, targets) => {
     for (const variant of [0, 1, 2]) {
       const day = planDay(targets, diet, per100, variant)
-      const totals = sumNutrition(MEAL_ORDER.map((m) => day[m].totals))
+      const totals = sumNutrition(MEAL_ORDER.map((m) => day[m]!.totals))
       expect(Math.abs(totals.calories - targets.calories) / targets.calories).toBeLessThan(0.1)
       // Falling short on protein matters; a little over is fine. Plant proteins come with carbs, so
       // vegan days are allowed a wider shortfall.
@@ -47,7 +48,7 @@ describe('planDay', () => {
   it('respects the diet style', () => {
     for (const diet of DIETS) {
       const day = planDay(woman, diet, per100)
-      for (const m of MEAL_ORDER) for (const item of day[m].items) expect(allowedFor(diet, item.food), `${diet}: ${item.food.id}`).toBe(true)
+      for (const m of MEAL_ORDER) for (const item of day[m]!.items) expect(allowedFor(diet, item.food), `${diet}: ${item.food.id}`).toBe(true)
     }
   })
 
@@ -57,8 +58,8 @@ describe('planDay', () => {
       for (const v of [0, 1, 2, 3]) {
         const day = planDay(woman, diet, per100, v)
         for (const m of MEAL_ORDER) {
-          expect(day[m].name, `${diet}: ${day[m].name}`).not.toMatch(meatWords)
-          expect(day[m].name).not.toContain('{protein}')
+          expect(day[m]!.name, `${diet}: ${day[m]!.name}`).not.toMatch(meatWords)
+          expect(day[m]!.name).not.toContain('{protein}')
         }
       }
     }
@@ -69,7 +70,7 @@ describe('planDay', () => {
   it('uses realistic portions (whole eggs, slices, steps)', () => {
     const day = planDay(woman, 'any', per100)
     for (const m of MEAL_ORDER) {
-      for (const { food, grams } of day[m].items) {
+      for (const { food, grams } of day[m]!.items) {
         expect(grams).toBeGreaterThanOrEqual(food.min)
         expect(grams).toBeLessThanOrEqual(food.max)
         expect(Math.abs(((grams - food.min) / food.step) % 1)).toBeLessThan(1e-9)
@@ -81,14 +82,14 @@ describe('planDay', () => {
     for (const diet of ['any', 'vegetarian'] as const) {
       for (const v of [0, 1, 2]) {
         const day = planDay(woman, diet, per100, v)
-        const protein = (m: 'lunch' | 'dinner') => day[m].items.find((i) => i.food.role === 'protein')?.food.id
+        const protein = (m: 'lunch' | 'dinner') => day[m]!.items.find((i) => i.food.role === 'protein')?.food.id
         expect(protein('lunch'), `${diet} v${v}`).not.toBe(protein('dinner'))
       }
     }
   })
 
   it('variants give different days', () => {
-    const names = (v: number) => MEAL_ORDER.map((m) => planDay(woman, 'any', per100, v)[m].template.id).join()
+    const names = (v: number) => MEAL_ORDER.map((m) => planDay(woman, 'any', per100, v)[m]!.template.id).join()
     expect(names(0)).not.toBe(names(1))
   })
 })
@@ -156,5 +157,46 @@ describe('portionLabel', () => {
     expect(portionLabel(eggs, 50)).toBe('1 egg (50 g)')
     expect(portionLabel(pb, 32)).toBe('2 tbsp (32 g)')
     expect(portionLabel(chicken, 150)).toBe('150 g')
+  })
+})
+
+describe('health considerations in food suggestions', () => {
+  const eaten = { calories: 900, proteinG: 30, carbsG: 120, fatG: 30, fiberG: 12 }
+
+  it('never suggests or plans foods with an allergen the user avoids', () => {
+    const avoid = ['dairy', 'egg', 'fish', 'peanut', 'gluten'] as const
+    const prefs = { diet: 'any' as const, avoid: [...avoid] }
+    const rec = recommendFoods(eaten, woman, prefs, per100)!
+    for (const v of [0, 1, 2]) {
+      const day = planDay(woman, prefs, per100, v)
+      const foods = [...rec.items, ...MEAL_ORDER.flatMap((m) => day[m]!.items)].map((i) => i.food)
+      for (const f of foods) expect(f.allergens ?? [], f.id).not.toEqual(expect.arrayContaining([expect.toBeOneOf([...avoid])]))
+    }
+  })
+
+  it('ranks salty foods lower for high blood pressure', () => {
+    const plain = recommendFoods(eaten, woman, 'any', per100)!.items.map((i) => i.food.id)
+    const bp = recommendFoods(eaten, woman, { diet: 'any', conditions: ['highBloodPressure'] }, per100)!.items.map((i) => i.food.id)
+    expect(plain).toContain('tuna')
+    expect(bp.indexOf('tuna') === -1 || bp.indexOf('tuna') > plain.indexOf('tuna')).toBe(true)
+  })
+
+  it('favors fiber over sugar for diabetes when suggesting carbs', () => {
+    const rec = recommendFoods(eaten, woman, { diet: 'any', conditions: ['diabetes'] }, per100, { focus: 'carbsG' })!
+    const ids = rec.items.map((i) => i.food.id)
+    expect(ids[0]).not.toBe('banana')
+    expect(ids.slice(0, 2)).not.toContain('apple')
+  })
+})
+
+describe('allergy coverage', () => {
+  it('every diet style with any single allergy still has an idea for every meal', () => {
+    for (const diet of DIETS) {
+      for (const a of ALLERGENS) {
+        for (const m of MEAL_ORDER) {
+          expect(mealIdeas(m, mealTarget(woman, m), { diet, avoid: [a.value] }, per100, 10).length, `${diet} + no ${a.value}: ${m}`).toBeGreaterThan(0)
+        }
+      }
+    }
   })
 })

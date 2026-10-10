@@ -5,11 +5,11 @@ import { Button, Card, Field, Section, Segmented, inputClass } from '../../compo
 import { getLatestBodyWeight } from '../../data/repositories/bodyRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { NUTRIENT_KEYS, NUTRIENTS, type NutrientKey, type Nutrition } from '../../domain/nutrition'
-import { ACTIVITY_LEVELS, type ActivityLevel, type Sex, ageFromBirthYear, suggestTargets, targetsPolicy } from '../../domain/targets'
+import { ACTIVITY_LEVELS, type ActivityLevel, type Sex, ageFromBirth, suggestTargets, targetsPolicy } from '../../domain/targets'
 import { goalLabel } from '../../lib/labels'
 import { useProfile } from '../../lib/profileContext'
-import { AgeField, HeightField, WeightField } from './BodyInputs'
-import { MinorNotice } from './MinorNotice'
+import { BirthDateField, HeightField, WeightField } from './BodyInputs'
+import { TargetsBlockedNotice } from './MinorNotice'
 import { BackButton } from '../../components/BackButton'
 
 type Draft = Record<NutrientKey, string>
@@ -22,13 +22,12 @@ export function TargetsScreen() {
   const [draft, setDraft] = useState<Draft>(() => toDraft(profile.nutritionTargets))
   const [saved, setSaved] = useState(false)
 
-  const age = profile.birthYear ? ageFromBirthYear(profile.birthYear) : undefined
+  const age = ageFromBirth(profile)
   // Targets need a known adult age: no suggestions, editing or saving for minors or unknown age.
-  const policy = targetsPolicy(age)
-  const isMinorAge = !policy.canShowSaved
+  const policy = targetsPolicy(age, profile.healthFlags)
   const ready = policy.canSet && profile.sex && age && profile.activityLevel && profile.heightCm && latest
   const suggestion = ready
-    ? suggestTargets({ sex: profile.sex!, age: age!, heightCm: profile.heightCm!, weightKg: latest!.weightKg, activity: profile.activityLevel!, goals: profile.goals, nutritionGoal: profile.nutritionGoal })
+    ? suggestTargets({ sex: profile.sex!, age: age!, heightCm: profile.heightCm!, weightKg: latest!.weightKg, activity: profile.activityLevel!, goals: profile.goals, nutritionGoal: profile.nutritionGoal, health: profile.healthFlags })
     : null
 
   const set = (k: NutrientKey, v: string) => {
@@ -74,7 +73,7 @@ export function TargetsScreen() {
                 ]}
               />
             </Field>
-            <AgeField age={age} />
+            <BirthDateField />
             <HeightField />
             <WeightField latestKg={latest?.weightKg} latestDate={latest?.date} />
           </Card>
@@ -183,8 +182,8 @@ export function TargetsScreen() {
               </Button>
             </div>
           </>
-        ) : isMinorAge ? (
-          <MinorNotice />
+        ) : policy.blockedBy ? (
+          <TargetsBlockedNotice reason={policy.blockedBy} />
         ) : (
           <Card className="!py-4">
             <p className="text-[14px] text-muted">Enter your age above to see suggestions or set targets.</p>

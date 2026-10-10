@@ -1,10 +1,11 @@
 import { todayISO } from '../../domain/dates'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
 import { type PRHit, detectPRs } from '../../domain/records'
+import { type SessionPerformance, suggestProgression } from '../../domain/progression'
 import type { ExerciseTarget } from '../../domain/types'
 import { db } from '../db'
 import { stamp, touch } from '../records'
-import type { SetRecord, WorkoutRecord } from '../schema'
+import type { ProgressionSuggestionRecord, SetRecord, WorkoutRecord } from '../schema'
 
 const DEFAULT_SETS_FOR_ADDED_EXERCISE = 3
 const DEFAULT_REPS = 10
@@ -101,6 +102,7 @@ export async function startPlannedWorkout(plannedSessionId: string): Promise<str
     await db.workouts.add(workout)
     await db.sets.bulkAdd(sets)
   })
+  if (session.targets.kind === 'strength') await createSuggestions(workout.id, session.targets.exercises.map((t) => t.exerciseId))
   return workout.id
 }
 
@@ -126,6 +128,7 @@ async function nextOrder(workoutId: string): Promise<number> {
 export async function addExercise(workoutId: string, exerciseId: string): Promise<void> {
   const rows = await buildSets(workoutId, await nextOrder(workoutId), { exerciseId, sets: DEFAULT_SETS_FOR_ADDED_EXERCISE })
   await db.sets.bulkAdd(rows)
+  await createSuggestions(workoutId, [exerciseId])
 }
 
 async function setsAt(workoutId: string, order: number) {
@@ -252,4 +255,76 @@ export async function discardWorkout(workoutId: string): Promise<void> {
     await db.sets.where('workoutId').equals(workoutId).delete()
     await db.workouts.delete(workoutId)
   })
+}
+
+// ----- Progression suggestions -----
+
+/**
+ * The last `limit` finished sessions of an exercise, newest first, with the workout's 1–10
+ * rating and the session's rep range.
+ */
+export async function exerciseHistory(exerciseId: string, excludeWorkoutId?: string, limit = 2): Promise<SessionPerformance[]> {
+  const sets = await db.sets
+    .where('exerciseId')
+    .equals(exerciseId)
+    .filter((s) => s.workoutId !== excludeWorkoutId)
+    .toArray()
+  const workouts = (await db.workouts.bulkGet([...new Set(sets.map((s) => s.workoutId))]))
+    .filter((w): w is WorkoutRecord => !!w && w.status === 'completed')
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''))
+    .slice(0, limit)
+  return workouts.map((w) => {
+    const own = sets.filter((s) => s.workoutId === w.id).sort((a, b) => a.setNumber - b.setNumber)
+    return {
+      difficulty: w.difficulty,
+      repMin: own[0]?.repMin,
+      repMax: own[0]?.repMax,
+      sets: own.map((s) => ({ weightKg: s.weightKg ?? 0, reps: s.reps, completed: s.completed })),
+    }
+  })
+}
+
+/** Work out and store suggestions for exercises in a workout (at most one pending per exercise). */
+export async function createSuggestions(workoutId: string, exerciseIds: string[]): Promise<void> {
+  const units = (await db.profile.get('me'))?.units ?? 'imperial'
+  for (const exerciseId of new Set(exerciseIds)) {
+    const ex = EXERCISES_BY_ID.get(exerciseId)
+    if (!ex) continue
+    const existing = await db.progressionSuggestions.where('workoutId').equals(workoutId).filter((s) => s.exerciseId === exerciseId).count()
+    if (existing) continue
+    const s = suggestProgression(await exerciseHistory(exerciseId, workoutId), ex, units)
+    if (!s) continue
+    const record: ProgressionSuggestionRecord = stamp({
+      exerciseId,
+      workoutId,
+      kind: s.kind,
+      reason: s.reason,
+      status: 'pending' as const,
+      ...(s.kind === 'increaseWeight' || s.kind === 'reduceWeight' ? { fromWeightKg: s.fromKg, suggestedWeightKg: s.toKg } : {}),
+      ...(s.kind === 'increaseReps' ? { fromReps: s.fromReps, suggestedReps: s.toReps } : {}),
+    })
+    await db.progressionSuggestions.add(record)
+  }
+}
+
+export async function listPendingSuggestions(workoutId: string): Promise<ProgressionSuggestionRecord[]> {
+  return db.progressionSuggestions.where('workoutId').equals(workoutId).filter((s) => s.status === 'pending').toArray()
+}
+
+/** Apply a suggestion to the not-yet-done sets of that exercise in this workout. */
+export async function acceptSuggestion(id: string): Promise<void> {
+  await db.transaction('rw', db.progressionSuggestions, db.sets, async () => {
+    const s = await db.progressionSuggestions.get(id)
+    if (!s || s.status !== 'pending') return
+    const sets = await db.sets.where('workoutId').equals(s.workoutId).filter((x) => x.exerciseId === s.exerciseId && !x.completed).toArray()
+    for (const set of sets) {
+      if (s.suggestedWeightKg !== undefined) await db.sets.update(set.id, touch({ weightKg: s.suggestedWeightKg }))
+      if (s.suggestedReps !== undefined) await db.sets.update(set.id, touch({ reps: s.suggestedReps }))
+    }
+    await db.progressionSuggestions.update(id, touch({ status: 'accepted' as const }))
+  })
+}
+
+export async function dismissSuggestion(id: string): Promise<void> {
+  await db.progressionSuggestions.update(id, touch({ status: 'dismissed' as const }))
 }

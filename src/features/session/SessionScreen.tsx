@@ -8,6 +8,7 @@ import { useProfile } from '../../lib/profileContext'
 import { ExerciseBlock } from './ExerciseBlock'
 import { ExercisePicker } from './ExercisePicker'
 import { RestTimerBar } from './RestTimerBar'
+import { SuggestionsCard } from './SuggestionsCard'
 import { useRestTimer } from './useRestTimer'
 
 type PickerState = { mode: 'add' } | { mode: 'swap'; order: number; exerciseId: string } | null
@@ -71,6 +72,7 @@ export function SessionScreen() {
           </Card>
         ) : (
           <div className="flex flex-col gap-4">
+            <SuggestionsCard workoutId={workoutId} />
             {groups.length === 0 && (
               <Card>
                 <p className="text-muted">No exercises yet. Add one to get started.</p>

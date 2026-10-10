@@ -1,16 +1,20 @@
 import 'fake-indexeddb/auto'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { generatePlan } from '../domain/planGenerator'
+import { kgToLb, lbToKg } from '../domain/units'
 import { exportAll, importBackup, parseBackup } from './backup'
 import { db, migrateProfileToV2, TABLE_NAMES } from './db'
 import { ensureExerciseSeed } from './repositories/exerciseRepo'
 import { activatePlan, getPlannedBetween, getPlannedForDate } from './repositories/planRepo'
-import { getProfile, saveOnboarding } from './repositories/profileRepo'
+import { getProfile, saveOnboarding, setHealthFlags, updateProfile } from './repositories/profileRepo'
 import { findFoodByBarcode, getCached, getEntriesForDate, listRecentFoods, listSavedMeals, logFood, logSavedMeal, saveMealAsFavorite, setCached, upsertFood } from './repositories/mealRepo'
 import { listPersonalRecords } from './repositories/recordsRepo'
 import {
+  acceptSuggestion,
   addExercise,
   discardWorkout,
+  dismissSuggestion,
+  listPendingSuggestions,
   finishWorkout,
   getSetsForWorkout,
   setCompleted,
@@ -44,13 +48,13 @@ beforeEach(async () => {
   await ensureExerciseSeed()
 })
 
-async function doWorkout(plannedId: string, perSet: (setNumber: number) => { weightKg: number; reps: number }) {
+async function doWorkout(plannedId: string, perSet: (setNumber: number) => { weightKg: number; reps: number }, difficulty = 6) {
   const id = await startPlannedWorkout(plannedId)
   for (const s of await getSetsForWorkout(id)) {
     await updateSet(s.id, perSet(s.setNumber))
     await setCompleted(s.id, true)
   }
-  await finishWorkout(id, { difficulty: 6, notes: 'felt good' })
+  await finishWorkout(id, { difficulty, notes: 'felt good' })
   return id
 }
 
@@ -244,5 +248,56 @@ describe('meal tracking', () => {
     expect(backup.tables.savedMeals).toHaveLength(1)
     expect(backup.tables).not.toHaveProperty('lookupCache')
     expect(await getCached('off:barcode:1', 30)).toEqual({ status: 'notFound' })
+  })
+})
+
+describe('progression suggestions use the 1–10 rating', () => {
+  const at = (date: string) => vi.setSystemTime(new Date(`${date}T09:00:00`))
+  const topOfRange = () => ({ weightKg: lbToKg(25), reps: 12 })
+
+  it('suggests more weight after a top-of-range session rated 6, and applies it only on Accept', async () => {
+    await onboard()
+    await doWorkout((await getPlannedForDate('2026-09-28'))!.id, topOfRange, 6)
+    at('2026-10-05')
+    const id = await startPlannedWorkout((await getPlannedForDate('2026-10-05'))!.id)
+    const pending = await listPendingSuggestions(id)
+    const squat = pending.find((s) => s.exerciseId === 'goblet-squat')!
+    expect(squat).toMatchObject({ kind: 'increaseWeight' })
+    expect(Math.round(kgToLb(squat.suggestedWeightKg!))).toBe(35) // lower body: +10 lb
+    // Nothing changes until Accept.
+    const before = (await getSetsForWorkout(id)).filter((s) => s.exerciseId === 'goblet-squat')
+    expect(before.every((s) => Math.round(kgToLb(s.weightKg!)) === 25)).toBe(true)
+    await acceptSuggestion(squat.id)
+    const after = (await getSetsForWorkout(id)).filter((s) => s.exerciseId === 'goblet-squat')
+    expect(after.every((s) => Math.round(kgToLb(s.weightKg!)) === 35)).toBe(true)
+    expect(await listPendingSuggestions(id)).not.toContainEqual(expect.objectContaining({ id: squat.id }))
+    at('2026-09-28')
+  })
+
+  it('holds instead when the same session was rated 9', async () => {
+    await onboard()
+    await doWorkout((await getPlannedForDate('2026-09-28'))!.id, topOfRange, 9)
+    at('2026-10-05')
+    const id = await startPlannedWorkout((await getPlannedForDate('2026-10-05'))!.id)
+    const squat = (await listPendingSuggestions(id)).find((s) => s.exerciseId === 'goblet-squat')!
+    expect(squat.kind).toBe('hold')
+    await dismissSuggestion(squat.id)
+    const sets = (await getSetsForWorkout(id)).filter((s) => s.exerciseId === 'goblet-squat')
+    expect(sets.every((s) => Math.round(kgToLb(s.weightKg!)) === 25)).toBe(true)
+    at('2026-09-28')
+  })
+})
+
+describe('health considerations', () => {
+  it('clears saved targets when a condition that switches targets off is ticked', async () => {
+    await onboard()
+    await updateProfile({ nutritionTargets: { calories: 2000, proteinG: 120 }, nutritionTargetsBasis: { weightKg: 80, setAt: '2026-09-28T00:00:00Z' } })
+    await setHealthFlags(['dairy', 'highBloodPressure'])
+    expect((await getProfile())!.nutritionTargets).toEqual({ calories: 2000, proteinG: 120 }) // allergies and BP keep targets
+    await setHealthFlags(['dairy', 'pregnancy'])
+    const p = (await getProfile())!
+    expect(p.healthFlags).toEqual(['dairy', 'pregnancy'])
+    expect(p.nutritionTargets).toBeUndefined()
+    expect(p.nutritionTargetsBasis).toBeUndefined()
   })
 })

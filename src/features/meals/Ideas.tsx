@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ButtonLink, Card, Chevron, Section } from '../../components/ui'
-import type { DietStyle } from '../../domain/foodCatalog'
-import { type Focus, type Recommendation, portionLabel, rankGaps, recommendFoods } from '../../domain/mealPlanner'
+import { type FoodPrefs, type Focus, type Recommendation, portionLabel, rankGaps, recommendFoods } from '../../domain/mealPlanner'
 import { type MealType, MEAL_TYPES, type Nutrition, NUTRIENTS, type UsdaFood, formatCalories, mealForTime } from '../../domain/nutrition'
 import { FoodConfirmSheet } from './FoodConfirmSheet'
 import { useUsdaLookup } from './useUsdaLookup'
@@ -18,7 +17,7 @@ const FOCUS_COPY: Record<Recommendation['focus'], string> = {
  * "Ideas for today": the biggest gap left against the user's targets, with everyday foods sized
  * to close it. Without targets, it points to the plan builder instead.
  */
-export function IdeasCard({ totals, targets, diet, date, fiberUnmeasured, minor = false }: { totals: Nutrition; targets?: Partial<Nutrition>; diet: DietStyle; date: string; fiberUnmeasured?: boolean; minor?: boolean }) {
+export function IdeasCard({ totals, targets, prefs, date, fiberUnmeasured, minor = false }: { totals: Nutrition; targets?: Partial<Nutrition>; prefs: FoodPrefs; date: string; fiberUnmeasured?: boolean; minor?: boolean }) {
   const lookup = useUsdaLookup()
   const [adding, setAdding] = useState<{ food: UsdaFood; grams: number } | null>(null)
   const [chosen, setChosen] = useState<Focus | null>(null)
@@ -43,7 +42,7 @@ export function IdeasCard({ totals, targets, diet, date, fiberUnmeasured, minor 
   const exclude: Focus[] = fiberUnmeasured ? ['fiberG'] : []
   const gaps = rankGaps(totals, targets!, exclude)
   const focus = chosen && gaps.some((g) => g.focus === chosen) ? chosen : gaps[0]?.focus
-  const rec = lookup && focus ? recommendFoods(totals, targets!, diet, lookup.per100, { focus, exclude }) : null
+  const rec = lookup && focus ? recommendFoods(totals, targets!, prefs, lookup.per100, { focus, exclude }) : null
   const mealLabel = MEAL_TYPES.find((m) => m.value === meal)!.label.toLowerCase()
 
   return (

@@ -101,8 +101,19 @@ export function ExerciseBlock({
 }
 
 function SetRow({ set, units, bodyweight, onCompleted }: { set: SetRecord; units: Units; bodyweight: boolean; onCompleted: () => void }) {
-  const [weight, setWeight] = useState(set.weightKg === null || (bodyweight && set.weightKg === 0) ? '' : String(toDisplayWeight(set.weightKg, units)))
+  const displayWeight = (kg: number | null) => (kg === null || (bodyweight && kg === 0) ? '' : String(toDisplayWeight(kg, units)))
+  const [weight, setWeight] = useState(displayWeight(set.weightKg))
   const [reps, setReps] = useState(String(set.reps))
+
+  // Pick up changes made elsewhere (e.g. accepting a suggestion) without fighting the user's
+  // typing: only replace the text when the saved value no longer matches what's in the box.
+  const [seen, setSeen] = useState({ weightKg: set.weightKg, reps: set.reps })
+  if (seen.weightKg !== set.weightKg || seen.reps !== set.reps) {
+    setSeen({ weightKg: set.weightKg, reps: set.reps })
+    const typedKg = weight === '' ? (bodyweight ? 0 : null) : fromDisplayWeight(parseFloat(weight), units)
+    if (typedKg === null || set.weightKg === null ? typedKg !== set.weightKg : Math.abs(typedKg - set.weightKg) > 1e-6) setWeight(displayWeight(set.weightKg))
+    if (parseInt(reps, 10) !== set.reps) setReps(String(set.reps))
+  }
 
   function commitWeight(text: string) {
     setWeight(text)

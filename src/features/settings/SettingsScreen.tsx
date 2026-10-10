@@ -107,7 +107,7 @@ export function SettingsScreen() {
 function MealsSection() {
   const profile = useProfile()
   const enabled = profile.showMeals !== false
-  const { targets: t, minor } = useNutritionTargets()
+  const { targets: t, blocked: minor } = useNutritionTargets()
   const summary = t && Object.keys(t).length
     ? [t.calories && `${Math.round(t.calories).toLocaleString()} cal`, t.proteinG && `${Math.round(t.proteinG)} g protein`].filter(Boolean).join(' · ') || `${Object.keys(t).length} set`
     : 'Not set'
@@ -121,6 +121,7 @@ function MealsSection() {
           {!minor && <ListRow title="Build my plan" subtitle="Guided targets and a sample day of meals" to="/meals/plan" />}
           <ListRow title="Daily targets" subtitle={minor ? 'For 18 and over' : summary} to="/meals/targets" />
           <ListRow title="Meal ideas" subtitle={DIET_STYLES.find((d) => d.value === (profile.dietStyle ?? 'any'))!.label} to="/meals/ideas" />
+          <ListRow title="Health considerations" subtitle={profile.healthFlags?.length ? `${profile.healthFlags.length} selected` : 'Allergies and conditions (optional)'} to="/meals/health" />
           <ListRow title="Food log" subtitle="Today’s meals and totals" to="/meals" />
         </ListGroup>
       )}

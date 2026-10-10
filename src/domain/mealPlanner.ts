@@ -1,5 +1,17 @@
 import { type CatalogFood, CATALOG, CATALOG_BY_ID, type DietStyle, MEAL_SHARES, type MealKind, type MealTemplate, TEMPLATES, allowedFor } from './foodCatalog'
+import type { Allergen, Condition } from './health'
 import { type Nutrition, ZERO, scaleNutrition, sumNutrition } from './nutrition'
+
+/**
+ * What the user eats: a diet style, plus allergens to avoid and conditions that shape which
+ * foods are suggested. A bare diet style is accepted for convenience.
+ */
+export type FoodPrefs = DietStyle | { diet: DietStyle; avoid?: Allergen[]; conditions?: Condition[] }
+const prefsOf = (p: FoodPrefs) => (typeof p === 'string' ? { diet: p, avoid: [] as Allergen[], conditions: [] as Condition[] } : { diet: p.diet, avoid: p.avoid ?? [], conditions: p.conditions ?? [] })
+export const allowedByPrefs = (prefs: FoodPrefs, food: CatalogFood) => {
+  const p = prefsOf(prefs)
+  return allowedFor(p.diet, food, p.avoid)
+}
 
 /** Looks up USDA nutrition per 100 g for a food's fdcId. */
 export type Per100 = (fdcId: number) => Nutrition | undefined
@@ -36,10 +48,10 @@ export function mealTarget(daily: Nutrition, meal: MealKind): Nutrition {
 }
 
 /** The foods a template uses for a diet style, or null if a slot has no allowed option. */
-export function resolveTemplate(template: MealTemplate, diet: DietStyle): CatalogFood[] | null {
+export function resolveTemplate(template: MealTemplate, diet: FoodPrefs): CatalogFood[] | null {
   const foods: CatalogFood[] = []
   for (const slot of template.slots) {
-    const pick = slot.options.map((id) => CATALOG_BY_ID.get(id)!).find((f) => allowedFor(diet, f))
+    const pick = slot.options.map((id) => CATALOG_BY_ID.get(id)!).find((f) => allowedByPrefs(diet, f))
     if (!pick) return null
     foods.push(pick)
   }
@@ -101,7 +113,7 @@ export function solvePortions(foods: CatalogFood[], target: Nutrition, per100: P
   return foods.map((food, i) => ({ food, grams: snapped[i], nutrition: scaleNutrition(per[i], snapped[i] / 100) }))
 }
 
-export function planMeal(template: MealTemplate, target: Nutrition, diet: DietStyle, per100: Per100): PlannedMeal | null {
+export function planMeal(template: MealTemplate, target: Nutrition, diet: FoodPrefs, per100: Per100): PlannedMeal | null {
   const foods = resolveTemplate(template, diet)
   if (!foods) return null
   const items = solvePortions(foods, target, per100)
@@ -112,7 +124,7 @@ export function planMeal(template: MealTemplate, target: Nutrition, diet: DietSt
 }
 
 /** The best-fitting meal ideas for a meal and budget. */
-export function mealIdeas(meal: MealKind, budget: Nutrition, diet: DietStyle, per100: Per100, limit = 3): PlannedMeal[] {
+export function mealIdeas(meal: MealKind, budget: Nutrition, diet: FoodPrefs, per100: Per100, limit = 3): PlannedMeal[] {
   return TEMPLATES.filter((t) => t.meal === meal)
     .map((t) => planMeal(t, budget, diet, per100))
     .filter((m): m is PlannedMeal => m !== null)
@@ -127,8 +139,9 @@ export const MEAL_ORDER: MealKind[] = ['breakfast', 'lunch', 'dinner', 'snacks']
  * what's still left, so later meals make up for earlier ones. `variant` cycles through the good
  * options for each meal.
  */
-export function planDay(daily: Nutrition, diet: DietStyle, per100: Per100, variant = 0): Record<MealKind, PlannedMeal> {
-  const out = {} as Record<MealKind, PlannedMeal>
+/** A meal is missing when no template fits the user's diet and allergies. */
+export function planDay(daily: Nutrition, diet: FoodPrefs, per100: Per100, variant = 0): Partial<Record<MealKind, PlannedMeal>> {
+  const out: Partial<Record<MealKind, PlannedMeal>> = {}
   let eaten: Nutrition = { ...ZERO }
   let shareLeft = 1
   const usedProteins = new Set<string>()
@@ -142,6 +155,10 @@ export function planDay(daily: Nutrition, diet: DietStyle, per100: Per100, varia
     const fresh = all.filter((m) => m.error <= all[0].error * 2 + 0.05 && !m.items.some((it) => it.food.role === 'protein' && usedProteins.has(it.food.id)))
     const ideas = (fresh.length && !isLast ? fresh : all).slice(0, 3)
     // Vary the earlier meals; the last one takes the best fit to close the day.
+    if (ideas.length === 0) {
+      shareLeft -= MEAL_SHARES[meal]
+      continue
+    }
     const pick = isLast ? ideas[0] : ideas[(variant + i) % ideas.length]
     out[meal] = pick
     for (const it of pick.items) if (it.food.role === 'protein') usedProteins.add(it.food.id)
@@ -195,7 +212,7 @@ export function rankGaps(totals: Nutrition, targets: Partial<Nutrition>, exclude
 export function recommendFoods(
   totals: Nutrition,
   targets: Partial<Nutrition>,
-  diet: DietStyle,
+  diet: FoodPrefs,
   per100: Per100,
   opts: { focus?: Focus; exclude?: Focus[]; limit?: number } = {},
 ): Recommendation | null {
@@ -206,10 +223,11 @@ export function recommendFoods(
   if (!found) return null
   const gap = { k: found.focus, left: found.remaining }
 
-  const ranked = CATALOG.filter((f) => FOCUS_ROLES[gap.k].includes(f.role) && allowedFor(diet, f))
+  const conditions = prefsOf(diet).conditions
+  const ranked = CATALOG.filter((f) => FOCUS_ROLES[gap.k].includes(f.role) && allowedByPrefs(diet, f))
     .map((f) => ({ f, n: per100(f.fdcId) }))
     .filter((x): x is { f: CatalogFood; n: Nutrition } => !!x.n && x.n.calories > 0 && (x.n[gap.k] ?? 0) > 0)
-    .map((x) => ({ ...x, score: ((x.n[gap.k] ?? 0) / x.n.calories) * (STAPLES.has(x.f.id) ? STAPLE_BOOST : 1) }))
+    .map((x) => ({ ...x, score: ((x.n[gap.k] ?? 0) / x.n.calories) * (STAPLES.has(x.f.id) ? STAPLE_BOOST : 1) * conditionFactor(x.n, conditions) }))
     .sort((a, b) => b.score - a.score)
   const candidates = pickVaried(ranked, limit)
 
@@ -220,6 +238,24 @@ export function recommendFoods(
     return { food: f, grams, nutrition: scaleNutrition(n, grams / 100) }
   })
   return { focus: gap.k, remaining: gap.left, items }
+}
+
+/**
+ * Steer suggestions for health conditions (per 100 kcal): salty foods down for high blood
+ * pressure, saturated-fat-heavy foods down for high cholesterol, sugary foods down and fiber up
+ * for diabetes. Foods aren't removed, just ranked lower, since none is off-limits in moderation.
+ */
+export function conditionFactor(n: Nutrition, conditions: Condition[]): number {
+  if (!conditions.length || n.calories <= 0) return 1
+  const per100kcal = (v: number | undefined) => ((v ?? 0) / n.calories) * 100
+  let f = 1
+  if (conditions.includes('highBloodPressure') && per100kcal(n.sodiumMg) > 150) f *= 0.4
+  if (conditions.includes('highCholesterol') && per100kcal(n.satFatG) > 1.5) f *= 0.4
+  if (conditions.includes('diabetes')) {
+    if (per100kcal(n.sugarG) > 8) f *= 0.4
+    f *= 1 + Math.min(per100kcal(n.fiberG), 10) / 10
+  }
+  return f
 }
 
 /** Foods most people already buy get a small boost, so suggestions feel familiar. */

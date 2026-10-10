@@ -1,6 +1,7 @@
 import type { MealType, Nutrition } from '../domain/nutrition'
 import type { PRKind } from '../domain/records'
 import type { DietStyle } from '../domain/foodCatalog'
+import type { HealthFlag } from '../domain/health'
 import type { ActivityLevel, NutritionGoal, Sex } from '../domain/targets'
 import type { Build, Equipment, ExerciseDef, ExperienceLevel, MainGoal, SessionTargets, SessionTemplate, Units } from '../domain/types'
 
@@ -47,9 +48,13 @@ export interface ProfileRecord extends BaseRecord {
   sex?: Sex
   /** Stored instead of age so it stays current. */
   birthYear?: number
+  /** 1–12. With the year, age is exact to the month (see ageFromBirth). */
+  birthMonth?: number
   activityLevel?: ActivityLevel
   nutritionGoal?: NutritionGoal
   dietStyle?: DietStyle
+  /** Optional allergies and conditions (saved only on device). See src/domain/health.ts. */
+  healthFlags?: HealthFlag[]
 }
 
 export type ExerciseRecord = ExerciseDef & BaseRecord
@@ -115,9 +120,14 @@ export interface RunRecord extends BaseRecord {
   stravaActivityId?: number
 }
 
+/** A suggested change for one exercise in one workout, shown before the user starts it. */
 export interface ProgressionSuggestionRecord extends BaseRecord {
   exerciseId: string
+  workoutId: string
+  kind: 'increaseWeight' | 'increaseReps' | 'reduceWeight' | 'hold'
+  fromWeightKg?: number
   suggestedWeightKg?: number
+  fromReps?: number
   suggestedReps?: number
   reason: string
   status: 'pending' | 'accepted' | 'dismissed'

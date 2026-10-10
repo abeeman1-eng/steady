@@ -3,20 +3,22 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, ChoiceList, Field, Section, Segmented } from '../../components/ui'
 import { getLatestBodyWeight } from '../../data/repositories/bodyRepo'
-import { updateProfile } from '../../data/repositories/profileRepo'
+import { setHealthFlags, updateProfile } from '../../data/repositories/profileRepo'
+import { allergensIn, conditionsIn } from '../../domain/health'
 import { DIET_STYLES, type DietStyle, MEAL_SHARES } from '../../domain/foodCatalog'
-import { MEAL_ORDER, planDay } from '../../domain/mealPlanner'
+import { type FoodPrefs, MEAL_ORDER, planDay } from '../../domain/mealPlanner'
 import { MEAL_TYPES, type Nutrition, formatCalories, sumNutrition } from '../../domain/nutrition'
-import { ACTIVITY_LEVELS, type ActivityLevel, NUTRITION_GOALS, type NutritionGoal, type Sex, ageFromBirthYear, isMinor, nutritionGoalFromGoals, suggestTargets } from '../../domain/targets'
+import { ACTIVITY_LEVELS, type ActivityLevel, NUTRITION_GOALS, type NutritionGoal, type Sex, ageFromBirth, isMinor, nutritionGoalFromGoals, suggestTargets, targetsPolicy } from '../../domain/targets'
 import { useProfile } from '../../lib/profileContext'
-import { AgeField, HeightField, WeightField } from './BodyInputs'
-import { MinorNotice } from './MinorNotice'
+import { BirthDateField, HeightField, WeightField } from './BodyInputs'
+import { HealthChecklist } from './HealthChecklist'
+import { MinorNotice, TargetsBlockedNotice } from './MinorNotice'
 import { MealIdeaCard } from './MealIdeaCard'
 import { useUsdaLookup } from './useUsdaLookup'
 import { BackButton } from '../../components/BackButton'
 
-type Step = 'intro' | 'about' | 'activity' | 'goal' | 'diet' | 'result'
-const STEPS: Step[] = ['intro', 'about', 'activity', 'goal', 'diet', 'result']
+type Step = 'intro' | 'about' | 'activity' | 'goal' | 'diet' | 'health' | 'result'
+const STEPS: Step[] = ['intro', 'about', 'activity', 'goal', 'diet', 'health', 'result']
 
 /**
  * A guided path to a nutrition plan for people who don't know where to start: a few questions,
@@ -30,13 +32,15 @@ export function PlanBuilderScreen() {
   const index = STEPS.indexOf(step)
   const go = (delta: number) => setStep(STEPS[Math.min(STEPS.length - 1, Math.max(0, index + delta))])
 
-  const age = profile.birthYear ? ageFromBirthYear(profile.birthYear) : undefined
+  const age = ageFromBirth(profile)
   const goal = profile.nutritionGoal ?? nutritionGoalFromGoals(profile.goals)
   const diet = profile.dietStyle ?? 'any'
   const minor = isMinor(age)
   const aboutDone = !!(profile.sex && age && !minor && profile.heightCm && latest)
 
-  const canContinue: Record<Step, boolean> = { intro: true, about: aboutDone, activity: !!profile.activityLevel, goal: true, diet: true, result: true }
+  const health = profile.healthFlags ?? []
+  const blockedBy = targetsPolicy(age, health).blockedBy
+  const canContinue: Record<Step, boolean> = { intro: true, about: aboutDone, activity: !!profile.activityLevel, goal: true, diet: true, health: true, result: true }
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-32">
@@ -83,7 +87,7 @@ export function PlanBuilderScreen() {
                   ]}
                 />
               </Field>
-              <AgeField age={age} />
+              <BirthDateField />
               <HeightField />
               <WeightField latestKg={latest?.weightKg} latestDate={latest?.date} />
             </Card>
@@ -114,12 +118,18 @@ export function PlanBuilderScreen() {
           </Question>
         )}
 
-        {step === 'result' && minor && <MinorNotice />}
+        {step === 'health' && (
+          <Question title="Anything Steady should know?" hint="Optional. Tick anything that applies and suggestions will work around it. Skip this if nothing does.">
+            <HealthChecklist value={health} onChange={(flags) => setHealthFlags(flags)} />
+          </Question>
+        )}
 
-        {step === 'result' && aboutDone && profile.activityLevel && (
+        {step === 'result' && blockedBy && <TargetsBlockedNotice reason={blockedBy} />}
+
+        {step === 'result' && !blockedBy && aboutDone && profile.activityLevel && (
           <PlanResult
-            inputs={{ sex: profile.sex!, age: age!, heightCm: profile.heightCm!, weightKg: latest!.weightKg, activity: profile.activityLevel, goals: profile.goals, nutritionGoal: goal }}
-            diet={diet}
+            inputs={{ sex: profile.sex!, age: age!, heightCm: profile.heightCm!, weightKg: latest!.weightKg, activity: profile.activityLevel, goals: profile.goals, nutritionGoal: goal, health }}
+            diet={{ diet, avoid: allergensIn(health), conditions: conditionsIn(health) }}
             onAccept={async (targets) => {
               await updateProfile({ nutritionTargets: targets, nutritionTargetsBasis: { weightKg: latest!.weightKg, setAt: new Date().toISOString() }, dietStyle: diet, nutritionGoal: goal })
             }}
@@ -129,7 +139,7 @@ export function PlanBuilderScreen() {
 
       {step !== 'result' && (
         <Button block onClick={() => go(1)} disabled={!canContinue[step]} className="mt-6">
-          {step === 'intro' ? 'Get started' : step === 'diet' ? 'See my plan' : 'Continue'}
+          {step === 'intro' ? 'Get started' : step === 'health' ? 'See my plan' : 'Continue'}
         </Button>
       )}
     </main>
@@ -154,7 +164,7 @@ const SPLIT: { key: 'proteinG' | 'carbsG' | 'fatG'; label: string; kcalPerG: num
   { key: 'fatG', label: 'Fat', kcalPerG: 9, color: 'var(--fat)' },
 ]
 
-function PlanResult({ inputs, diet, onAccept }: { inputs: Parameters<typeof suggestTargets>[0]; diet: DietStyle; onAccept: (t: Required<Nutrition>) => Promise<void> }) {
+function PlanResult({ inputs, diet, onAccept }: { inputs: Parameters<typeof suggestTargets>[0]; diet: FoodPrefs; onAccept: (t: Required<Nutrition>) => Promise<void> }) {
   const navigate = useNavigate()
   const lookup = useUsdaLookup()
   const [variant, setVariant] = useState(0)
@@ -162,7 +172,7 @@ function PlanResult({ inputs, diet, onAccept }: { inputs: Parameters<typeof sugg
   const s = useMemo(() => suggestTargets(inputs), [inputs])
   const t = s.targets
   const day = useMemo(() => (lookup ? planDay(t, diet, lookup.per100, variant) : null), [lookup, t, diet, variant])
-  const dayTotals = day ? sumNutrition(MEAL_ORDER.map((m) => day[m].totals)) : null
+  const dayTotals = day ? sumNutrition(MEAL_ORDER.flatMap((m) => (day[m] ? [day[m]!.totals] : []))) : null
   const macroCalories = SPLIT.reduce((sum, m) => sum + t[m.key] * m.kcalPerG, 0)
 
   async function accept(then: string) {
@@ -242,7 +252,14 @@ function PlanResult({ inputs, diet, onAccept }: { inputs: Parameters<typeof sugg
         ) : (
           <>
             {MEAL_ORDER.map((m) => (
-              <MealIdeaCard key={m} meal={day[m]} eyebrow={MEAL_TYPES.find((x) => x.value === m)!.label} />
+              day[m] ? (
+                <MealIdeaCard key={m} meal={day[m]!} eyebrow={MEAL_TYPES.find((x) => x.value === m)!.label} />
+              ) : (
+                <Card key={m} className="!py-4">
+                  <p className="text-[12px] font-semibold tracking-[0.06em] text-muted uppercase">{MEAL_TYPES.find((x) => x.value === m)!.label}</p>
+                  <p className="mt-1 text-[14px] text-muted">No sample meal fits your diet and allergies here yet. Plan this one yourself; the food log will keep your totals right.</p>
+                </Card>
+              )
             ))}
             <p className="px-1 text-[13px] text-muted">
               This sample day adds up to <span className="text-text tabular-nums">{formatCalories(dayTotals.calories)} cal</span> and{' '}

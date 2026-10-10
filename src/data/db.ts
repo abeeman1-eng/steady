@@ -88,6 +88,11 @@ db.version(3).stores({
   lookupCache: 'id, fetchedAt',
 })
 
+// v4: progression suggestions belong to the workout they were made for.
+db.version(4).stores({
+  progressionSuggestions: 'id, exerciseId, status, workoutId',
+})
+
 /** Convert a v1 profile row in place. Safe to run on rows that are already v2. */
 export function migrateProfileToV2(row: Record<string, unknown>): void {
   if (!Array.isArray(row.goals)) row.goals = typeof row.mainGoal === 'string' ? [row.mainGoal] : ['general']

@@ -1,5 +1,6 @@
 import { todayISO } from '../../domain/dates'
 import type { Build, Equipment, ExperienceLevel, GeneratedPlan, MainGoal, Units } from '../../domain/types'
+import { type HealthFlag, blockingCondition } from '../../domain/health'
 import { db } from '../db'
 import { stamp, touch } from '../records'
 import type { ProfileRecord, RunningGoal } from '../schema'
@@ -55,4 +56,9 @@ export async function saveOnboarding(answers: OnboardingAnswers, plan: Generated
   }
   if (weightKg) await addBodyWeight(todayISO(), weightKg)
   await activatePlan(plan)
+}
+
+/** Save health considerations. A condition that switches targets off also clears saved targets. */
+export async function setHealthFlags(flags: HealthFlag[]): Promise<void> {
+  await updateProfile(blockingCondition(flags) ? { healthFlags: flags, nutritionTargets: undefined, nutritionTargetsBasis: undefined } : { healthFlags: flags })
 }

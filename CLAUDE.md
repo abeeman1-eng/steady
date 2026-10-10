@@ -23,6 +23,7 @@ Before calling a new or changed tracking page done, test it in the browser **aft
 ### Other standing rules
 
 - 44 px minimum tap targets, no horizontal overflow at 375 px, and visible labels (color is never the only signal).
-- Nutrition targets are adults-only: read targets through `useNutritionTargets`, never `profile.nutritionTargets` directly (see "Safety limits" in the README).
+- Nutrition targets are adults-only and off for some health conditions: read targets through `useNutritionTargets`, never `profile.nutritionTargets` directly (see "Safety limits" and "Health considerations" in the README).
+- Any new food suggestion or meal feature must use `foodPrefs` from `useNutritionTargets` (diet style, allergens, conditions), so allergies are always respected.
 - Pure logic lives in `src/domain` with unit tests. Storage goes through `src/data/repositories`.
 - Before committing, run `npm run lint`, `npm test` and `npm run build`.

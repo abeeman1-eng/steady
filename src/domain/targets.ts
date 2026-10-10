@@ -1,3 +1,4 @@
+import { type BlockingCondition, type HealthFlag, blockingCondition } from './health'
 import type { NutrientKey, Nutrition } from './nutrition'
 import type { MainGoal } from './types'
 
@@ -31,6 +32,8 @@ export interface TargetInputs {
   activity: ActivityLevel
   goals: MainGoal[]
   nutritionGoal?: NutritionGoal
+  /** Health considerations; some adjust limits, some block targets entirely. */
+  health?: HealthFlag[]
 }
 
 export type FullTargets = Required<Nutrition>
@@ -73,6 +76,10 @@ function goalAdjustment(goal: NutritionGoal): { pct: number; reason: string } {
 export function suggestTargets(input: TargetInputs): SuggestedTargets {
   // Backstop: screens block minors before getting here, but never produce targets for one.
   if (!(input.age >= MIN_TARGET_AGE)) throw new MinorTargetsError()
+  const blocked = blockingCondition(input.health)
+  if (blocked) throw new TargetsBlockedError(blocked)
+  const lowSodium = !!input.health?.includes('highBloodPressure')
+  const lowSatFat = !!input.health?.includes('highCholesterol')
   const bmr = mifflinStJeor(input)
   const maintenance = bmr * ACTIVITY_LEVELS[input.activity].factor
   const goal = input.nutritionGoal ?? nutritionGoalFromGoals(input.goals)
@@ -97,8 +104,8 @@ export function suggestTargets(input: TargetInputs): SuggestedTargets {
     fatG,
     fiberG: Math.round((calories / 1000) * 14),
     sugarG: Math.round((calories * 0.1) / 4),
-    satFatG: Math.round((calories * 0.1) / 9),
-    sodiumMg: 2300,
+    satFatG: Math.round((calories * (lowSatFat ? 0.06 : 0.1)) / 9),
+    sodiumMg: lowSodium ? 1500 : 2300,
   }
 
   return {
@@ -115,8 +122,8 @@ export function suggestTargets(input: TargetInputs): SuggestedTargets {
       fatG: 'About 30% of calories',
       fiberG: '14 g per 1,000 calories',
       sugarG: 'Limit: 10% of calories. Counts all sugar, including fruit and milk',
-      satFatG: 'Limit: 10% of calories',
-      sodiumMg: 'Limit: 2,300 mg a day',
+      satFatG: lowSatFat ? 'Limit: 6% of calories, the American Heart Association’s advice for high cholesterol' : 'Limit: 10% of calories',
+      sodiumMg: lowSodium ? 'Limit: 1,500 mg a day, the American Heart Association’s ideal for high blood pressure' : 'Limit: 2,300 mg a day',
     },
   }
 }
@@ -139,12 +146,38 @@ export const isMinor = (age: number | undefined) => age !== undefined && age < M
  * Whether targets may be suggested, set or shown. Targets need a known adult age; the one
  * exception is showing targets that were saved before age was asked (never for a known minor).
  */
-export function targetsPolicy(age: number | undefined): { canSet: boolean; canShowSaved: boolean } {
-  return { canSet: age !== undefined && age >= MIN_TARGET_AGE, canShowSaved: !isMinor(age) }
+export type BlockReason = 'minor' | BlockingCondition
+
+export class TargetsBlockedError extends Error {
+  readonly reason: BlockingCondition
+  constructor(reason: BlockingCondition) {
+    super(`Nutrition targets are switched off because of a health consideration (${reason}).`)
+    this.reason = reason
+  }
 }
 
-export const ageFromBirthYear = (birthYear: number, now = new Date()) => now.getFullYear() - birthYear
-export const birthYearFromAge = (age: number, now = new Date()) => now.getFullYear() - age
+export function targetsPolicy(age: number | undefined, health: HealthFlag[] = []): { canSet: boolean; canShowSaved: boolean; blockedBy?: BlockReason } {
+  const blockedBy: BlockReason | undefined = isMinor(age) ? 'minor' : blockingCondition(health)
+  if (blockedBy) return { canSet: false, canShowSaved: false, blockedBy }
+  return { canSet: age !== undefined && age >= MIN_TARGET_AGE, canShowSaved: true }
+}
+
+/**
+ * Age in whole years from birth year and month (1–12). Without a day, it errs young: during the
+ * birth month the birthday is assumed not to have happened yet, and with no month at all the
+ * birthday is assumed to be later this year. So someone born December 2008 isn't treated as 18
+ * until December 2026, and a year-only profile can't pass the under-18 check early.
+ */
+export function ageFromBirth(birth: { birthYear?: number; birthMonth?: number }, now = new Date()): number | undefined {
+  if (!birth.birthYear) return undefined
+  const years = now.getFullYear() - birth.birthYear
+  const month = now.getMonth() + 1
+  const hadBirthday = birth.birthMonth !== undefined && month > birth.birthMonth
+  return hadBirthday ? years : years - 1
+}
+
+/** True when an age came from a year only, so the month should be asked for. */
+export const needsBirthMonth = (birth: { birthYear?: number; birthMonth?: number }) => birth.birthYear !== undefined && birth.birthMonth === undefined
 
 /**
  * True when the latest weight has moved enough since targets were set (2 kg or 3%) that the
