@@ -23,7 +23,6 @@ export function PlanScreen() {
       }
     >
       <ListGroup>
-        <ListRow title="Exercise guide" subtitle="Step-by-step form and muscles worked" to="/exercises" />
         <ListRow title="Log a run" subtitle="Distance, time and how it felt" to="/runs/log" />
       </ListGroup>
       {plan === null && (

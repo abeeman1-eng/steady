@@ -2,8 +2,8 @@ import { useSearchParams } from 'react-router-dom'
 import { Card, ListGroup, ListRow, Screen, SectionTitle, inputClass } from '../../components/ui'
 import { EXERCISE_LIBRARY } from '../../domain/exerciseLibrary'
 import { MUSCLE_LABELS, searchExercises } from '../../domain/exerciseSearch'
+import { EXERCISE_VIDEOS, videoLength } from '../../domain/exerciseVideos'
 import type { ExerciseDef, MovementPattern } from '../../domain/types'
-import { BackButton } from '../../components/BackButton'
 
 const BROWSE_GROUPS: { title: string; patterns: MovementPattern[] }[] = [
   { title: 'Legs and glutes', patterns: ['squat', 'hinge', 'lunge'] },
@@ -19,8 +19,8 @@ export function ExerciseGuideScreen() {
   const results = query.trim() ? searchExercises(query, EXERCISE_LIBRARY) : null
 
   return (
-    <Screen title="Exercise guide" back={<BackButton parent="/plan" parentLabel="Plan" />}>
-      <p className="-mt-2 text-muted">Type an exercise to see how to do it step by step and which muscles it works.</p>
+    <Screen title="Exercises">
+      <p className="-mt-2 text-muted">Search for an exercise to watch a short video demo, read the steps and see which muscles it works.</p>
       <input
         className={inputClass}
         type="search"
@@ -61,7 +61,12 @@ function ExerciseLinks({ items }: { items: ExerciseDef[] }) {
   return (
     <ListGroup>
       {items.map((e) => (
-        <ListRow key={e.id} title={e.name} subtitle={e.muscleGroups.map((m) => MUSCLE_LABELS[m].name).join(', ')} to={`/exercises/${e.id}`} />
+        <ListRow
+          key={e.id}
+          title={e.name}
+          subtitle={[e.muscleGroups.map((m) => MUSCLE_LABELS[m].name).join(', '), EXERCISE_VIDEOS[e.id] && `▶ ${videoLength(EXERCISE_VIDEOS[e.id].seconds)} video`].filter(Boolean).join(' · ')}
+          to={`/exercises/${e.id}`}
+        />
       ))}
     </ListGroup>
   )

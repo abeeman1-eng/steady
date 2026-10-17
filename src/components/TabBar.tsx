@@ -10,6 +10,11 @@ const icon = (d: ReactNode) => (
 const TABS = [
   { to: '/', label: 'Today', icon: icon(<><path d="M3.5 10.5 12 4l8.5 6.5" /><path d="M5.5 9v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9" /><path d="M10 20v-5h4v5" /></>) },
   { to: '/plan', label: 'Plan', icon: icon(<><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" /><path d="M8 3v4M16 3v4M3.5 10h17" /></>) },
+  {
+    to: '/exercises',
+    label: 'Exercises',
+    icon: icon(<><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></>),
+  },
   { to: '/history', label: 'History', icon: icon(<><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" /><path d="M3.5 4v4h4" /><path d="M12 8v4l3 2" /></>) },
   { to: '/progress', label: 'Progress', icon: icon(<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>) },
   {
@@ -25,12 +30,12 @@ const TABS = [
 ]
 
 export function TabBar() {
-  // Screens opened from a tab keep that tab highlighted: the exercise guide (Plan) and food log (Today).
+  // Screens opened from a tab keep that tab highlighted: the food log and run logging (Today).
   const path = useLocation().pathname
-  const parentTab = path.startsWith('/exercises') ? '/plan' : path.startsWith('/meals') ? '/' : null
+  const parentTab = path.startsWith('/meals') || path.startsWith('/runs') ? '/' : null
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150">
-      <ul className="mx-auto grid max-w-xl grid-cols-5">
+      <ul className="mx-auto grid max-w-xl grid-cols-6">
         {TABS.map((t) => (
           <li key={t.to}>
             <NavLink

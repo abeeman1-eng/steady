@@ -2,8 +2,10 @@ import { Link, useParams } from 'react-router-dom'
 import { Card, SectionTitle } from '../../components/ui'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
 import { MUSCLE_LABELS } from '../../domain/exerciseSearch'
+import { EXERCISE_VIDEOS } from '../../domain/exerciseVideos'
 import { EQUIPMENT_LABELS } from '../../lib/labels'
 import { BackButton } from '../../components/BackButton'
+import { VideoDemo } from './VideoDemo'
 
 const DIFFICULTY_LABEL = { 1: 'Beginner-friendly', 2: 'Intermediate', 3: 'Advanced technique' } as const
 
@@ -16,7 +18,7 @@ export function ExerciseDetailScreen() {
       <main className="mx-auto max-w-xl p-4">
         <p className="text-muted">That exercise isn’t in the guide.</p>
         <Link to="/exercises" className="text-accent">
-          Back to the exercise guide
+          Back to Exercises
         </Link>
       </main>
     )
@@ -24,11 +26,12 @@ export function ExerciseDetailScreen() {
 
   const [main, ...also] = exercise.muscleGroups
   const alternatives = exercise.substituteIds.slice(0, 4).map((id) => EXERCISES_BY_ID.get(id)!)
+  const video = EXERCISE_VIDEOS[exercise.id]
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28">
       {/* Back returns to wherever the user came from (search results, the plan, a workout), or the guide. */}
-      <BackButton parent="/exercises" parentLabel="Exercise guide" className="mb-2" />
+      <BackButton parent="/exercises" parentLabel="Exercises" className="mb-2" />
       <h1 className="text-[28px] leading-tight font-semibold">{exercise.name}</h1>
       <p className="mt-1 text-muted">{exercise.description}</p>
       <ul className="mt-3 flex flex-wrap gap-2 text-sm" aria-label="Details">
@@ -58,6 +61,13 @@ export function ExerciseDetailScreen() {
             )}
           </Card>
         </section>
+
+        {video && (
+          <section className="flex flex-col gap-2">
+            <SectionTitle>Video demo</SectionTitle>
+            <VideoDemo key={exercise.id} video={video} exerciseName={exercise.name} />
+          </section>
+        )}
 
         <section className="flex flex-col gap-2">
           <SectionTitle>How to do it</SectionTitle>

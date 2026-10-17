@@ -6,7 +6,7 @@ import { backAction } from './lib/navigation'
 const SOURCES = import.meta.glob<string>('./features/**/*.tsx', { query: '?raw', import: 'default', eager: true })
 
 /** Main tabs are always reachable from the tab bar, so they don't need a Back action. */
-const TAB_ROOTS = new Set(['/', '/plan', '/history', '/progress', '/settings'])
+const TAB_ROOTS = new Set(['/', '/plan', '/exercises', '/history', '/progress', '/settings'])
 /** Onboarding runs before a home screen exists and has its own step-by-step Back. */
 const EXEMPT = new Set(['/onboarding', '*'])
 
