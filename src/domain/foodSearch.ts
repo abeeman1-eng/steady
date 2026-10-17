@@ -17,6 +17,9 @@ const CATEGORY_PREFIXES = new Set(['nut', 'cheese', 'beef', 'pork', 'lamb', 'vea
 /** Filler that shouldn't make a name look long ("broilers or fryers", "with added vitamin D"). */
 const FILLER = new Set(['or', 'and', 'with', 'without', 'meat', 'only', 'broiler', 'fryer', 'added', 'vitamin', 'a', 'd', 'regular', 'enriched', 'unenriched', 'all', 'commercial', 'variety', 'in', 'of', 'n', 'ns', 'nf', 'nfs', 'fluid', 'as', 'purchased', 'the', 'to', 'not', 'fortified', 'milkfat', 'separable', 'lean', 'fat', 'skin', 'bone', 'removed', 'trimmed'])
 
+/** Joining words people type ("mac and cheese") that USDA names often leave out. */
+const QUERY_STOPWORDS = new Set(['and', 'or', 'with', 'the', 'of', 'a', 'an', 'n'])
+
 /** Plain forms make the best default ("Bananas, raw", "Egg, whole, cooked, hard-boiled"). */
 const PLAIN = new Set(['raw', 'fresh', 'whole', 'plain', 'cooked', 'boiled', 'roasted', 'brewed', 'baked', 'steamed'])
 
@@ -26,16 +29,24 @@ const DETOUR = new Set([
   'deli', 'luncheon', 'sweetened', 'dessert', 'pudding', 'pie', 'cake', 'cookie', 'candy', 'prepared', 'glutinous', 'buttermilk', 'sheep', 'goat',
   'human', 'formula', 'babyfood', 'baby', 'infant', 'restaurant', 'fast', 'school', 'usda', 'commodity', 'military', 'alaska', 'native', 'navajo',
   'hopi', 'apache', 'shoshone', 'substitute', 'nugget', 'dry', 'concentrate', 'stick', 'salted', 'soymilk', 'industrial', 'reduced', 'low',
-  'nonfat', 'free', 'yolk', 'glutinou',
+  'nonfat', 'free', 'yolk', 'glutinou', 'grain', 'wheat', 'gluten', 'meatless', 'vegetarian',
 ])
+
+const SYNONYM_BONUS = 80
 
 /** Everyday names that don't appear in USDA's wording. */
 const SYNONYMS: Record<string, string[]> = {
   egg: ['egg whole'],
   rice: ['rice white long grain cooked'],
   'white rice': ['rice white long grain cooked'],
-  oatmeal: ['cereals oats'],
+  oatmeal: ['oatmeal regular or quick made with water no added fat'],
+  smoothie: ['fruit smoothie nfs'],
   oat: ['cereals oats'],
+  pizza: ['pizza cheese from restaurant or fast food medium crust'],
+  'pepperoni pizza': ['pizza with pepperoni from restaurant or fast food medium crust'],
+  'cheese pizza': ['pizza cheese from restaurant or fast food medium crust'],
+  'mac cheese': ['macaroni or noodles with cheese'],
+  'macaroni cheese': ['macaroni or noodles with cheese'],
   coffee: ['beverages coffee brewed'],
   tea: ['beverages tea brewed'],
   'chicken breast': ['chicken broilers or fryers breast'],
@@ -45,7 +56,12 @@ const SYNONYMS: Record<string, string[]> = {
   steak: ['beef steak'],
   pb: ['peanut butter'],
   oj: ['orange juice'],
-  fries: ['potatoes french fried'],
+  // Keys are singular, as the query is ("fries" → "fry").
+  fry: ['potato french fries nfs'],
+  'french fry': ['potato french fries nfs'],
+  bread: ['bread white'],
+  soda: ['soft drink cola'],
+  pop: ['soft drink cola'],
 }
 
 /**
@@ -54,7 +70,9 @@ const SYNONYMS: Record<string, string[]> = {
  * short, plain names beat processed or niche variants.
  */
 export function scoreFoodName(name: string, query: string): number {
-  const q = foodWords(query)
+  const words = foodWords(query)
+  const kept = words.filter((w) => !QUERY_STOPWORDS.has(w))
+  const q = kept.length ? kept : words
   if (q.length === 0) return 0
   const segments = name.split(',').map(foodWords).filter((s) => s.length)
   const all = segments.flat()
@@ -72,22 +90,27 @@ export function scoreFoodName(name: string, query: string): number {
 
   const typed = (t: string) => q.some((w) => t.startsWith(w))
   if (all.some((t) => PLAIN.has(t) && !typed(t))) score += 8
+  // "Not further specified" is USDA's generic, typical version of a dish ("Burrito, NFS").
+  if (all.includes('nfs')) score += 12
   score -= 12 * all.filter((t) => DETOUR.has(t) && !typed(t)).length
   // Upper-case brand names ("KELLOGG'S") mark branded items; generic ones make better defaults.
-  if (/[A-Z]{3,}/.test(name)) score -= 15
+  // ("NFS", USDA's "not further specified", isn't a brand.)
+  if (/[A-Z]{3,}/.test(name.replace(/\bNFS\b/g, ''))) score -= 15
   return Math.max(1, score)
 }
 
 export function searchUsdaFoods(query: string, foods: readonly UsdaFood[], limit = 25): UsdaFood[] {
-  const key = foodWords(query).join(' ')
+  const key = foodWords(query)
+    .filter((w) => !QUERY_STOPWORDS.has(w))
+    .join(' ')
   if (!key) return []
   const queries = [query, ...(SYNONYMS[key] ?? [])]
   const best = new Map<number, { f: UsdaFood; s: number }>()
   for (const [i, q] of queries.entries()) {
     for (const f of foods) {
-      // A synonym match counts as a strong direct match.
-      const s = scoreFoodName(f[1], q) + (i > 0 ? 50 : 0)
-      if (s > (i > 0 ? 50 : 0) && s > (best.get(f[0])?.s ?? 0)) best.set(f[0], { f, s })
+      // A synonym names the everyday version outright, so it beats short names that merely match.
+      const s = scoreFoodName(f[1], q) + (i > 0 ? SYNONYM_BONUS : 0)
+      if (s > (i > 0 ? SYNONYM_BONUS : 0) && s > (best.get(f[0])?.s ?? 0)) best.set(f[0], { f, s })
     }
   }
   return [...best.values()]
@@ -98,5 +121,11 @@ export function searchUsdaFoods(query: string, foods: readonly UsdaFood[], limit
 
 /** Title-case the all-caps brand names USDA uses ("KELLOGG'S" → "Kellogg's"). */
 export function prettyFoodName(name: string): string {
-  return name.replace(/\b[A-Z]{2,}(?:'[A-Z]+)?\b/g, (w) => w[0] + w.slice(1).toLowerCase())
+  return (
+    name
+      // USDA survey shorthand: "Burrito, NFS" → "Burrito, typical"; "NS as to fat" → "any fat".
+      .replace(/\bNFS\b/g, 'typical')
+      .replace(/\bNS as to\b/g, 'any')
+      .replace(/\b[A-Z]{2,}(?:'[A-Z]+)?\b/g, (w) => w[0] + w.slice(1).toLowerCase())
+  )
 }

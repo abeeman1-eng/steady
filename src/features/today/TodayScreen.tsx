@@ -4,18 +4,20 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button, ButtonLink, Card, Chevron, PRBadge, Ring, Section } from '../../components/ui'
 import { downloadBackup } from '../../data/backup'
 import { getEntriesForDate } from '../../data/repositories/mealRepo'
-import { ensurePlannedSessions, getNextPlanned, getPlannedBetween, getPlannedForDate } from '../../data/repositories/planRepo'
+import { ensurePlannedSessions, getActivePlan, getNextPlanned, getPlannedBetween, getPlannedForDate, markMissedSessions } from '../../data/repositories/planRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { getMostRecentPR } from '../../data/repositories/recordsRepo'
 import { getInProgressWorkout, listCompletedBetween, startFreeWorkout, startPlannedWorkout } from '../../data/repositories/workoutRepo'
 import { needsBackupReminder } from '../../domain/backupReminder'
-import { addDays, formatDate, startOfWeek, todayISO } from '../../domain/dates'
+import { addDays, daysBetween, formatDate, startOfWeek, todayISO } from '../../domain/dates'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
 import { formatCalories, mealForTime, scaleNutrition, sumNutrition } from '../../domain/nutrition'
+import { formatDistance } from '../../domain/units'
 import { describePR, formatSetTarget } from '../../lib/format'
 import { useNutritionTargets } from '../../lib/useNutritionTargets'
 import { useProfile } from '../../lib/profileContext'
 import { MacroLine } from '../meals/NutritionUi'
+import { RunTargetDetails } from '../running/runUi'
 import { WeekDots } from './WeekDots'
 
 export function TodayScreen() {
@@ -25,7 +27,7 @@ export function TodayScreen() {
   const [starting, setStarting] = useState(false)
 
   useEffect(() => {
-    void ensurePlannedSessions()
+    void markMissedSessions().then(() => ensurePlannedSessions())
   }, [])
 
   const inProgress = useLiveQuery(getInProgressWorkout)
@@ -36,6 +38,8 @@ export function TodayScreen() {
   const weekDone = useLiveQuery(() => listCompletedBetween(weekStart, addDays(weekStart, 6)), [weekStart])
   const nextPlanned = useLiveQuery(() => getNextPlanned(today), [today])
   const recentPR = useLiveQuery(() => getMostRecentPR(addDays(today, -14)), [today])
+  const plan = useLiveQuery(getActivePlan)
+  const raceDaysLeft = plan?.type === 'running' && plan.goalDate ? daysBetween(today, plan.goalDate) : undefined
 
   async function start(fn: () => Promise<string>) {
     setStarting(true)
@@ -90,14 +94,32 @@ export function TodayScreen() {
                   )
                 })}
               </ol>
+            ) : planned.targets.kind === 'run' ? (
+              <RunTargetDetails target={planned.targets} units={profile.units} />
             ) : (
               <p className="mt-2 text-[15px] text-muted">
                 {planned.targets.durationMin} min · {planned.targets.activity}. {planned.targets.cue}.
               </p>
             )}
-            <Button block className="mt-5" onClick={() => start(() => startPlannedWorkout(planned.id))} disabled={starting}>
-              Start workout
-            </Button>
+            {planned.targets.kind === 'run' ? (
+              <ButtonLink to={`/runs/log?session=${planned.id}`} className="mt-5 w-full">
+                Log run
+              </ButtonLink>
+            ) : (
+              <Button block className="mt-5" onClick={() => start(() => startPlannedWorkout(planned.id))} disabled={starting}>
+                Start workout
+              </Button>
+            )}
+          </HeroCard>
+        ) : raceDaysLeft !== undefined && raceDaysLeft < 0 ? (
+          <HeroCard eyebrow="Plan complete" accent title="You made it to race day">
+            <p className="mt-2 text-[15px] text-muted">Your running plan finished on {formatDate(plan!.goalDate!, { month: 'long', day: 'numeric' })}. Set a new goal whenever you’re ready.</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <ButtonLink to="/onboarding?edit=1">Set a new goal</ButtonLink>
+              <ButtonLink to="/runs/log" variant="secondary">
+                Log a run
+              </ButtonLink>
+            </div>
           </HeroCard>
         ) : (
           <HeroCard eyebrow="Rest day" title="Recovery is part of the plan">
@@ -107,10 +129,30 @@ export function TodayScreen() {
                 {nextPlanned.date === addDays(today, 1) ? 'tomorrow' : `on ${formatDate(nextPlanned.date, { weekday: 'long' })}`}
               </p>
             )}
-            <Button variant="secondary" className="mt-5" onClick={() => start(startFreeWorkout)} disabled={starting}>
-              Log a workout anyway
-            </Button>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => start(startFreeWorkout)} disabled={starting}>
+                Log a workout anyway
+              </Button>
+              <ButtonLink to="/runs/log" variant="secondary">
+                Log a run
+              </ButtonLink>
+            </div>
           </HeroCard>
+        )}
+
+        {raceDaysLeft !== undefined && raceDaysLeft >= 0 && plan?.goalDistance && (
+          <Card className="flex items-center justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block text-[13px] text-muted">Running goal</span>
+              <span className="block truncate text-[15px] font-medium">
+                {formatDistance(plan.goalDistance, profile.units)} on {formatDate(plan.goalDate!, { month: 'short', day: 'numeric' })}
+              </span>
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="block text-[22px] leading-none font-semibold tabular-nums">{raceDaysLeft}</span>
+              <span className="text-[12px] text-muted">{raceDaysLeft === 1 ? 'day to go' : 'days to go'}</span>
+            </span>
+          </Card>
         )}
 
         <Section title="This week">

@@ -130,14 +130,36 @@ export function usdaServingOptions(food: UsdaFood): ServingOption[] {
   return [...household, { label: '100 g', grams: 100 }, { label: '1 oz (28 g)', grams: 28.35 }]
 }
 
-/** The serving most people mean: a "medium" size, then the label serving, then USDA's first. */
-export function defaultServingIndex(options: ServingOption[]): number {
+/** Servings that are rarely what someone ate, so never the default ("1 miniature", "1 fl oz"). */
+const ODD_SERVING = /miniature|bite size|silver dollar|\bfl oz\b|surface inch|cubic inch|linear inch|^1 (fry|oz|shoestring|straight cut|crinkle cut|spiral or curly)\b/i
+
+/** The singular, lower-case word naming one item in a serving label ("1 bananas (118 g)" → "banana"). */
+const servingNoun = (label: string) =>
+  /^1 ([a-z-]+?)(?:e?s)?(?: \(|,|$)/i
+    .exec(label)?.[1]
+    ?.toLowerCase()
+
+/**
+ * The serving most people mean: one of the food itself ("1 banana" for "Banana, raw"), a "medium"
+ * size (but not a whole medium pizza), then the label serving, a regular size, a single item, a
+ * cup, and otherwise the first sensible one.
+ */
+export function defaultServingIndex(options: ServingOption[], foodName = ''): number {
+  const nameWords = foodName
+    .split(',')[0]
+    .toLowerCase()
+    .split(/[^a-z-]+/)
+  const own = options.findIndex((o) => {
+    const noun = servingNoun(o.label)
+    return !!noun && !ODD_SERVING.test(o.label) && nameWords.some((w) => w === noun || w.replace(/e?s$/, '') === noun)
+  })
+  if (own >= 0) return own
   const find = (re: RegExp) => options.findIndex((o) => re.test(o.label))
-  for (const re of [/^1 medium\b/i, /^1 NLEA serving/i, /^1 (large|slice|piece|fruit|serving)\b/i]) {
+  for (const re of [/^1 medium\b(?! pizza)/i, /^1 NLEA serving/i, /^1 (small\/regular|regular)\b/i, /^1 (large|slice|piece|fruit|serving|item)\b/i, /^1 cup\b/i]) {
     const i = find(re)
     if (i >= 0) return i
   }
-  return 0
+  return Math.max(0, options.findIndex((o) => !ODD_SERVING.test(o.label)))
 }
 
 export const nutritionForGrams =(per100g: Nutrition, grams: number) => scaleNutrition(per100g, grams / 100)

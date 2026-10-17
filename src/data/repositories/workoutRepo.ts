@@ -5,7 +5,7 @@ import { type SessionPerformance, suggestProgression } from '../../domain/progre
 import type { ExerciseTarget } from '../../domain/types'
 import { db } from '../db'
 import { stamp, touch } from '../records'
-import type { ProgressionSuggestionRecord, SetRecord, WorkoutRecord } from '../schema'
+import type { ProgressionSuggestionRecord, RunRecord, SetRecord, WorkoutRecord } from '../schema'
 
 const DEFAULT_SETS_FOR_ADDED_EXERCISE = 3
 const DEFAULT_REPS = 10
@@ -24,6 +24,11 @@ export async function getSetsForWorkout(workoutId: string): Promise<SetRecord[]>
 export async function listCompletedWorkouts(): Promise<WorkoutRecord[]> {
   const all = await db.workouts.where('status').equals('completed').toArray()
   return all.sort((a, b) => b.date.localeCompare(a.date) || (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''))
+}
+
+/** Runs keyed by workout id, for history rows. */
+export async function runsByWorkout(): Promise<Map<string, RunRecord>> {
+  return new Map((await db.runs.toArray()).map((r) => [r.workoutId, r]))
 }
 
 export async function listCompletedBetween(from: string, to: string): Promise<WorkoutRecord[]> {
@@ -254,6 +259,85 @@ export async function discardWorkout(workoutId: string): Promise<void> {
     await db.personalRecords.where('workoutId').equals(workoutId).delete()
     await db.sets.where('workoutId').equals(workoutId).delete()
     await db.workouts.delete(workoutId)
+  })
+}
+
+// ----- Runs -----
+
+export interface RunLog {
+  date: string
+  distanceM: number
+  durationSec: number
+  difficulty?: number
+  notes?: string
+  /** The planned run this logs, if any. It's marked done, even if it was already marked missed. */
+  plannedSessionId?: string
+}
+
+/** Log a finished run (manual entry). Returns the workout id. */
+export async function logRun(log: RunLog): Promise<string> {
+  return db.transaction('rw', db.workouts, db.runs, db.plannedSessions, async () => {
+    const planned = log.plannedSessionId ? await db.plannedSessions.get(log.plannedSessionId) : undefined
+    const now = new Date().toISOString()
+    const workout: WorkoutRecord = stamp({
+      plannedSessionId: planned?.id,
+      date: log.date,
+      name: planned?.name ?? 'Run',
+      type: 'running' as const,
+      status: 'completed' as const,
+      startedAt: now,
+      finishedAt: now,
+      difficulty: log.difficulty,
+      notes: log.notes,
+      source: 'manual' as const,
+      durationSec: log.durationSec,
+    })
+    const run: RunRecord = stamp({
+      workoutId: workout.id,
+      date: log.date,
+      distanceM: log.distanceM,
+      durationSec: log.durationSec,
+      runType: planned?.targets.kind === 'run' ? planned.targets.runType : ('easy' as const),
+    })
+    await db.workouts.add(workout)
+    await db.runs.add(run)
+    if (planned) await db.plannedSessions.update(planned.id, touch({ status: 'done' as const }))
+    return workout.id
+  })
+}
+
+export const getRunForWorkout = async (workoutId: string) => (await db.runs.where('workoutId').equals(workoutId).first()) ?? null
+
+export async function listRunsBetween(from: string, to: string): Promise<RunRecord[]> {
+  return db.runs.where('date').between(from, to, true, true).toArray()
+}
+
+/** Fix a logged run's distance or time from history. */
+export async function updateRun(workoutId: string, fields: { distanceM: number; durationSec: number }): Promise<void> {
+  await db.transaction('rw', db.workouts, db.runs, async () => {
+    const run = await db.runs.where('workoutId').equals(workoutId).first()
+    if (run) await db.runs.update(run.id, touch(fields))
+    await db.workouts.update(workoutId, touch({ durationSec: fields.durationSec }))
+  })
+}
+
+/**
+ * Delete a finished workout from history (a run logged by mistake, say). Its planned session goes
+ * back to planned, or to missed if its day has passed.
+ */
+export async function deleteWorkout(workoutId: string): Promise<void> {
+  await db.transaction('rw', [db.workouts, db.sets, db.personalRecords, db.runs, db.plannedSessions, db.progressionSuggestions], async () => {
+    const workout = await db.workouts.get(workoutId)
+    if (!workout) return
+    await db.personalRecords.where('workoutId').equals(workoutId).delete()
+    await db.sets.where('workoutId').equals(workoutId).delete()
+    await db.runs.where('workoutId').equals(workoutId).delete()
+    await db.progressionSuggestions.where('workoutId').equals(workoutId).delete()
+    await db.workouts.delete(workoutId)
+    if (workout.plannedSessionId) {
+      const session = await db.plannedSessions.get(workout.plannedSessionId)
+      if (session) await db.plannedSessions.update(session.id, touch({ status: session.date < todayISO() ? ('missed' as const) : ('planned' as const) }))
+    }
   })
 }
 

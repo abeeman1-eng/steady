@@ -7,7 +7,7 @@ import { getCached, setCached } from './repositories/mealRepo'
 
 let usdaPromise: Promise<UsdaFood[]> | null = null
 
-/** Load the built-in USDA list on first use (a separate ~200 KB chunk, cached offline by the service worker). */
+/** Load the built-in USDA list on first use (a separate ~400 KB gzipped chunk, cached offline by the service worker). */
 export function loadUsdaFoods(): Promise<UsdaFood[]> {
   usdaPromise ??= import('./seed/usdaFoods.json').then((m) => m.default.foods as UsdaFood[]).catch((e: unknown) => {
     usdaPromise = null

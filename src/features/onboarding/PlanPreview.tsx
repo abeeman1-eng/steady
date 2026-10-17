@@ -2,22 +2,27 @@ import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui'
 import { WEEKDAY_NAMES } from '../../domain/dates'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
-import type { GeneratedPlan, SessionTemplate } from '../../domain/types'
+import type { GeneratedPlan, SessionTemplate, Units } from '../../domain/types'
 import { formatSetTarget } from '../../lib/format'
+import { RunningPlanOverview } from '../running/RunningPlanOverview'
+import { runTargetAmount } from '../running/runLabels'
+
+type PreviewPlan = Pick<GeneratedPlan, 'type' | 'summary' | 'weekly' | 'sessions' | 'runWeeks' | 'goalDate' | 'goalDistance' | 'flaggedUnrealistic'>
 
 /** `linkExercises` makes exercise names open the exercise guide (off during onboarding so answers aren't lost). */
-export function PlanPreview({ plan, linkExercises = false }: { plan: Pick<GeneratedPlan, 'summary' | 'weekly'>; linkExercises?: boolean }) {
+export function PlanPreview({ plan, units, linkExercises = false }: { plan: PreviewPlan; units: Units; linkExercises?: boolean }) {
+  if (plan.type === 'running') return <RunningPlanOverview plan={plan} units={units} />
   return (
     <div className="flex flex-col gap-3">
       <p className="rounded-2xl bg-accent-soft p-4 text-lg font-semibold">{plan.summary}</p>
       {plan.weekly.map((s) => (
-        <SessionTemplateCard key={s.weekday} session={s} linkExercises={linkExercises} />
+        <SessionTemplateCard key={s.weekday} session={s} units={units} linkExercises={linkExercises} />
       ))}
     </div>
   )
 }
 
-export function SessionTemplateCard({ session, linkExercises }: { session: SessionTemplate; linkExercises?: boolean }) {
+export function SessionTemplateCard({ session, units, linkExercises }: { session: SessionTemplate; units: Units; linkExercises?: boolean }) {
   return (
     <Card>
       <div className="flex items-baseline justify-between gap-2">
@@ -42,6 +47,10 @@ export function SessionTemplateCard({ session, linkExercises }: { session: Sessi
             )
           })}
         </ul>
+      ) : session.targets.kind === 'run' ? (
+        <p className="mt-2 text-sm text-muted">
+          {runTargetAmount(session.targets, units)} · {session.targets.detail}. {session.targets.cue}.
+        </p>
       ) : (
         <p className="mt-2 text-sm text-muted">
           {session.targets.durationMin} min · {session.targets.activity}. {session.targets.cue}.

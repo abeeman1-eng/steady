@@ -3,7 +3,7 @@ import type { PRKind } from '../domain/records'
 import type { DietStyle } from '../domain/foodCatalog'
 import type { HealthFlag } from '../domain/health'
 import type { ActivityLevel, NutritionGoal, Sex } from '../domain/targets'
-import type { Build, Equipment, ExerciseDef, ExperienceLevel, MainGoal, SessionTargets, SessionTemplate, Units } from '../domain/types'
+import type { Build, DatedSessionTemplate, Equipment, ExerciseDef, ExperienceLevel, MainGoal, RunType, RunWeek, SessionTargets, SessionTemplate, Units } from '../domain/types'
 
 /**
  * Every record carries sync-ready fields so a server can take over when accounts arrive.
@@ -65,10 +65,15 @@ export interface PlanRecord extends BaseRecord {
   startDate: string
   summary: string
   weekly: SessionTemplate[]
+  /** Running plans: every session by date through race day (instead of a repeating week). */
+  sessions?: DatedSessionTemplate[]
+  runWeeks?: RunWeek[]
   /** Planned sessions exist up to and including this date. */
   generatedThrough?: string
+  /** Running plans: goal distance in meters and race day. */
   goalDistance?: number
   goalDate?: string
+  /** The goal date was sooner than recommended and the user chose to continue. */
   flaggedUnrealistic?: boolean
 }
 
@@ -115,8 +120,12 @@ export interface SetRecord extends BaseRecord {
 
 export interface RunRecord extends BaseRecord {
   workoutId: string
+  /** Same as the workout's date, so charts can read runs without joining. */
+  date: string
   distanceM: number
   durationSec: number
+  /** From the planned session; unplanned runs count as easy. */
+  runType: RunType
   stravaActivityId?: number
 }
 

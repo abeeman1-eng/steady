@@ -57,17 +57,55 @@ export interface ExerciseTarget {
   repMax: number
 }
 
+/** Running plan session types. Run/walk is the easy run for new runners; intervals are experienced-only. */
+export type RunType = 'easy' | 'long' | 'intervals' | 'runWalk' | 'race'
+
+export interface RunTarget {
+  kind: 'run'
+  runType: RunType
+  /** Target distance in meters (continuous runs and the race). */
+  distanceM?: number
+  /** Target time (run/walk sessions, which are timed rather than measured). */
+  durationMin?: number
+  /** What to do, e.g. "Alternate 1 minute running with 2 minutes walking". */
+  detail: string
+  /** Plain-language effort, e.g. "Easy: you can hold a conversation". */
+  cue: string
+}
+
 export type SessionTargets =
   | { kind: 'strength'; exercises: ExerciseTarget[] }
   | { kind: 'cardio'; durationMin: number; activity: string; cue: string }
+  | RunTarget
 
 export interface SessionTemplate {
   /** 0 = Sunday … 6 = Saturday */
   weekday: number
   name: string
-  type: 'strength' | 'cardio'
+  type: 'strength' | 'cardio' | 'running'
   optional: boolean
   targets: SessionTargets
+}
+
+/** One session on a specific date (running plans change week to week, so they're dated). */
+export type DatedSessionTemplate = Omit<SessionTemplate, 'weekday'> & { date: string }
+
+export type RunPhase = 'base' | 'build' | 'recovery' | 'peak' | 'taper' | 'race'
+
+/** A week of a running plan, for the plan overview. Distances in meters. */
+export interface RunWeek {
+  start: string
+  end: string
+  phase: RunPhase
+  distanceM: number
+  longRunM: number
+}
+
+export interface RunningGoalInput {
+  label: string
+  distanceM: number
+  /** Race or target day, "YYYY-MM-DD". */
+  date: string
 }
 
 export interface PlanInput {
@@ -76,10 +114,22 @@ export interface PlanInput {
   goals: MainGoal[]
   daysPerWeek: number
   equipment: Equipment[]
+  /** With the running goal, a dated running plan is built toward this. */
+  runningGoal?: RunningGoalInput
+  /** First day of the plan (default today). */
+  startDate?: string
 }
 
 export interface GeneratedPlan {
-  type: 'strength' | 'mixed'
+  type: 'strength' | 'mixed' | 'running'
   summary: string
+  /** Repeating week (strength and mixed plans). Empty for running plans. */
   weekly: SessionTemplate[]
+  /** Running plans: every session by date, through race day. */
+  sessions?: DatedSessionTemplate[]
+  runWeeks?: RunWeek[]
+  goalDistance?: number
+  goalDate?: string
+  /** The goal date was sooner than recommended and the user continued anyway. */
+  flaggedUnrealistic?: boolean
 }

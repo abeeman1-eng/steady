@@ -19,10 +19,13 @@ export function describePR(pr: Pick<PersonalRecordRecord, 'kind' | 'value' | 'we
   }
 }
 
+/** "25:30", or "1:05:30" from an hour up. */
 export function formatDuration(totalSec: number): string {
-  const m = Math.floor(totalSec / 60)
-  const s = Math.max(0, Math.round(totalSec % 60))
-  return `${m}:${String(s).padStart(2, '0')}`
+  const total = Math.max(0, Math.round(totalSec))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = String(total % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
 }
 
 export const DIFFICULTY_ANCHORS = [

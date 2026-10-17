@@ -2,9 +2,9 @@ import type { PlannedSessionRecord, WorkoutRecord } from '../../data/schema'
 import { WEEKDAY_NAMES, addDays, weekdayOf } from '../../domain/dates'
 import { CheckIcon } from '../../components/ui'
 
-type DayState = 'done' | 'planned' | 'optional' | 'rest'
+type DayState = 'done' | 'missed' | 'planned' | 'optional' | 'rest'
 
-const LABEL: Record<DayState, string> = { done: 'completed', planned: 'planned', optional: 'optional session', rest: 'rest day' }
+const LABEL: Record<DayState, string> = { done: 'completed', missed: 'missed', planned: 'planned', optional: 'optional session', rest: 'rest day' }
 
 export function WeekDots({ weekStart, today, planned, done }: { weekStart: string; today: string; planned: PlannedSessionRecord[]; done: WorkoutRecord[] }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -17,7 +17,8 @@ export function WeekDots({ weekStart, today, planned, done }: { weekStart: strin
       <ol className="grid grid-cols-7 gap-1">
         {days.map((date) => {
           const p = planned.find((s) => s.date === date)
-          const state: DayState = doneDates.has(date) ? 'done' : p ? (p.optional ? 'optional' : 'planned') : 'rest'
+          // Missed days are shown in a neutral color, with no warning: the plan simply carries on.
+          const state: DayState = doneDates.has(date) ? 'done' : p ? (p.status === 'missed' ? 'missed' : p.optional ? 'optional' : 'planned') : 'rest'
           const weekday = WEEKDAY_NAMES[weekdayOf(date)]
           return (
             <li key={date} className="flex flex-col items-center gap-2" aria-label={`${weekday}${date === today ? ' (today)' : ''}: ${LABEL[state]}`}>
@@ -26,14 +27,17 @@ export function WeekDots({ weekStart, today, planned, done }: { weekStart: strin
                 className={`flex size-9 items-center justify-center rounded-full ${
                   state === 'done'
                     ? 'bg-accent text-accent-ink'
-                    : state === 'planned'
-                      ? 'ring-2 ring-accent/70 ring-inset'
-                      : state === 'optional'
-                        ? 'border-2 border-dashed border-neutral'
-                        : 'bg-surface-2'
+                    : state === 'missed'
+                      ? 'bg-surface-3 text-subtle'
+                      : state === 'planned'
+                        ? 'ring-2 ring-accent/70 ring-inset'
+                        : state === 'optional'
+                          ? 'border-2 border-dashed border-neutral'
+                          : 'bg-surface-2'
                 }`}
               >
                 {state === 'done' && <CheckIcon className="size-4" />}
+                {state === 'missed' && <span aria-hidden className="h-0.5 w-3 rounded-full bg-current" />}
               </span>
               <span aria-hidden className={`size-1 rounded-full ${date === today ? 'bg-text' : 'bg-transparent'}`} />
             </li>

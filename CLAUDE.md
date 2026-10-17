@@ -25,5 +25,6 @@ Before calling a new or changed tracking page done, test it in the browser **aft
 - 44 px minimum tap targets, no horizontal overflow at 375 px, and visible labels (color is never the only signal).
 - Nutrition targets are adults-only and off for some health conditions: read targets through `useNutritionTargets`, never `profile.nutritionTargets` directly (see "Safety limits" and "Health considerations" in the README).
 - Any new food suggestion or meal feature must use `foodPrefs` from `useNutritionTargets` (diet style, allergens, conditions), so allergies are always respected.
+- Running plans (`src/domain/runningPlan.ts`) must keep the spec's safety rules: no week more than 10% above the biggest week so far, peak about 3 weeks out, no back-to-back hard days, intervals for experienced runners only. `runningPlan.test.ts` checks these; don't loosen them to fit a date (a too-soon date gets the warning and a lower peak).
 - Pure logic lives in `src/domain` with unit tests. Storage goes through `src/data/repositories`.
 - Before committing, run `npm run lint`, `npm test` and `npm run build`.

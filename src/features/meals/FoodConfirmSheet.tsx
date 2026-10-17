@@ -60,7 +60,7 @@ export function FoodConfirmSheet({ candidate, mealType, date, onDone, onClose }:
   const { name, options } = useMemo(() => optionsFor(candidate), [candidate])
   const [optionIndex, setOptionIndex] = useState(() => {
     if (candidate.kind !== 'usda') return 0
-    if (candidate.grams === undefined) return defaultServingIndex(usdaServingOptions(candidate.food))
+    if (candidate.grams === undefined) return defaultServingIndex(usdaServingOptions(candidate.food), candidate.food[1])
     return Math.max(0, options.findIndex((o) => o.label.includes(`(${Math.round(candidate.grams!)} g)`) || o.label === `${Math.round(candidate.grams!)} g`))
   })
   const [servings, setServings] = useState(1)

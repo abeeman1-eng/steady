@@ -55,6 +55,7 @@ export function RunningGoalStep({ units, value, onChange }: { units: Units; valu
           className={inputClass}
           type="date"
           min={addDays(todayISO(), 1)}
+          max={addDays(todayISO(), 364)}
           value={date}
           onChange={(e) => {
             setDate(e.target.value)

@@ -9,8 +9,8 @@ const base = process.env.BASE_PATH ?? '/'
 
 export default defineConfig({
   base,
-  // The USDA food list (~1 MB raw, ~200 KB gzipped) and barcode scanner are lazy-loaded chunks.
-  build: { chunkSizeWarningLimit: 1100 },
+  // The USDA food list (~1.8 MB raw, ~400 KB gzipped) and barcode scanner are lazy-loaded chunks.
+  build: { chunkSizeWarningLimit: 1900 },
   plugins: [
     react(),
     tailwindcss(),
@@ -37,6 +37,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: `${base}index.html`,
+        // Above Workbox's 2 MB default so the food list is always cached for offline search.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
     }),
   ],

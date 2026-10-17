@@ -145,7 +145,7 @@ export function AddFoodScreen() {
           </button>
         </div>
         <p className="text-center text-xs text-muted">
-          Whole foods from USDA FoodData Central. Packaged foods from{' '}
+          Foods and dishes from USDA FoodData Central. Packaged foods from{' '}
           <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer" className="underline">
             Open Food Facts
           </a>{' '}
@@ -213,7 +213,7 @@ function SearchResults({ query, onPick }: { query: string; onPick: (c: FoodCandi
       )}
 
       <section className="flex flex-col gap-2">
-        <SectionTitle>Whole foods</SectionTitle>
+        <SectionTitle>Foods and dishes</SectionTitle>
         {usdaError ? (
           <p className="text-sm text-muted">The food list couldn’t load. Check your connection and try again.</p>
         ) : usda === null ? (
@@ -224,7 +224,7 @@ function SearchResults({ query, onPick }: { query: string; onPick: (c: FoodCandi
           <FoodList
             items={usda.map((f) => {
               const options = usdaServingOptions(f)
-              const serving = options[defaultServingIndex(options)]
+              const serving = options[defaultServingIndex(options, f[1])]
               return { key: String(f[0]), name: usdaDisplayName(f), detail: serving.label, nutrition: nutritionForGrams(usdaPer100g(f), serving.grams), onClick: () => onPick({ kind: 'usda', food: f }) }
             })}
           />

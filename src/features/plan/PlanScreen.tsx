@@ -1,12 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { Card, ListGroup, ListRow, Screen } from '../../components/ui'
-import { getActivePlan } from '../../data/repositories/planRepo'
-import { formatDate } from '../../domain/dates'
+import { getActivePlan, getPlannedBetween } from '../../data/repositories/planRepo'
+import { formatDate, todayISO } from '../../domain/dates'
+import { useProfile } from '../../lib/profileContext'
 import { PlanPreview } from '../onboarding/PlanPreview'
+import { RunningPlanOverview } from '../running/RunningPlanOverview'
 
 export function PlanScreen() {
+  const { units } = useProfile()
   const plan = useLiveQuery(getActivePlan)
+  const today = todayISO()
+  const statuses = useLiveQuery(async () => (plan?.type === 'running' && plan.goalDate ? getPlannedBetween(plan.startDate, plan.goalDate) : []), [plan?.id])
 
   return (
     <Screen
@@ -19,16 +24,23 @@ export function PlanScreen() {
     >
       <ListGroup>
         <ListRow title="Exercise guide" subtitle="Step-by-step form and muscles worked" to="/exercises" />
+        <ListRow title="Log a run" subtitle="Distance, time and how it felt" to="/runs/log" />
       </ListGroup>
       {plan === null && (
         <Card>
           <p className="text-muted">No active plan.</p>
         </Card>
       )}
-      {plan && (
+      {plan?.type === 'running' && (
+        <>
+          <p className="text-sm text-muted">Started {formatDate(plan.startDate, { month: 'long', day: 'numeric', year: 'numeric' })}. Missed days stay marked; the plan carries on from where you are.</p>
+          <RunningPlanOverview plan={plan} units={units} today={today} statuses={statuses} openWeekOf={today} />
+        </>
+      )}
+      {plan && plan.type !== 'running' && (
         <>
           <p className="text-sm text-muted">Started {formatDate(plan.startDate, { month: 'long', day: 'numeric', year: 'numeric' })}. Repeats every week.</p>
-          <PlanPreview plan={plan} linkExercises />
+          <PlanPreview plan={plan} units={units} linkExercises />
         </>
       )}
     </Screen>

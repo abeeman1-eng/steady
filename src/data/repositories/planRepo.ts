@@ -1,4 +1,5 @@
 import { addDays, todayISO, weekdayOf } from '../../domain/dates'
+import type { SessionTemplate } from '../../domain/types'
 import type { GeneratedPlan } from '../../domain/types'
 import { db } from '../db'
 import { stamp, touch } from '../records'
@@ -22,6 +23,15 @@ export async function activatePlan(generated: GeneratedPlan, startDate = todayIS
     startDate,
     summary: generated.summary,
     weekly: generated.weekly,
+    ...(generated.type === 'running'
+      ? {
+          sessions: generated.sessions,
+          runWeeks: generated.runWeeks,
+          goalDistance: generated.goalDistance,
+          goalDate: generated.goalDate,
+          flaggedUnrealistic: generated.flaggedUnrealistic,
+        }
+      : {}),
   })
   await db.transaction('rw', db.plans, db.plannedSessions, async () => {
     const old = await db.plans.where('status').equals('active').toArray()
@@ -51,9 +61,12 @@ export async function ensurePlannedSessions(through = addDays(todayISO(), LOOKAH
       (await db.plannedSessions.where('date').between(date, through, true, true).toArray()).filter((s) => s.status === 'done').map((s) => s.date),
     )
     const toAdd: PlannedSessionRecord[] = []
+    // Running plans list every session by date; other plans repeat the same week.
+    const templatesFor = (d: string): Omit<SessionTemplate, 'weekday'>[] =>
+      plan.sessions ? plan.sessions.filter((s) => s.date === d) : plan.weekly.filter((w) => w.weekday === weekdayOf(d))
     for (; date <= through; date = addDays(date, 1)) {
       if (doneDates.has(date)) continue
-      for (const t of plan.weekly.filter((w) => w.weekday === weekdayOf(date))) {
+      for (const t of templatesFor(date)) {
         toAdd.push(
           stamp({
             planId: plan.id,
@@ -96,4 +109,22 @@ export async function getNextPlanned(date: string): Promise<PlannedSessionRecord
   return upcoming ?? null
 }
 
-export const getPlannedSession =(id: string) => db.plannedSessions.get(id)
+export const getPlannedSession = (id: string) => db.plannedSessions.get(id)
+
+/**
+ * Any planned session not logged by the end of its day becomes "missed". Nothing else changes:
+ * the goal date and the remaining sessions stay as they are. Returns how many were marked.
+ */
+export async function markMissedSessions(today = todayISO()): Promise<number> {
+  const now = new Date().toISOString()
+  return db.plannedSessions
+    .where('status')
+    .equals('planned')
+    .filter((s) => s.date < today)
+    .modify({ status: 'missed', updatedAt: now })
+}
+
+/** Planned sessions of any plan (including past plans) between two dates, for the consistency calendar. */
+export async function getAllPlannedBetween(from: string, to: string): Promise<PlannedSessionRecord[]> {
+  return db.plannedSessions.where('date').between(from, to, true, true).toArray()
+}

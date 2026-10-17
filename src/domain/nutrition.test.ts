@@ -25,19 +25,22 @@ describe('nutrition math', () => {
 
 describe('built-in USDA list', () => {
   it('has thousands of foods with sane values', () => {
-    expect(foods.length).toBeGreaterThan(7000)
+    // SR Legacy basics, FNDDS everyday dishes and Foundation Foods.
+    expect(foods.length).toBeGreaterThan(13000)
+    expect(new Set(foods.map((f) => f[0])).size).toBe(foods.length)
+    expect(new Set(foods.map((f) => f[1].toLowerCase())).size).toBe(foods.length)
     // Nothing beats pure fat (~900 kcal/100 g), and macros can't exceed the food's weight.
     const insane = foods.filter((f) => f[2] < 0 || f[2] >= 950 || f[3] + f[4] + f[5] > 101)
     expect(insane).toEqual([])
   })
 
   it.each([
-    ['banana', 'Bananas, raw'],
-    ['bananas', 'Bananas, raw'],
+    ['banana', 'Banana, raw'],
+    ['bananas', 'Banana, raw'],
     ['broccoli', 'Broccoli, raw'],
-    ['egg', 'Egg, whole, raw, fresh'],
-    ['almonds', 'Nuts, almonds'],
-    ['olive oil', 'Oil, olive, salad or cooking'],
+    ['egg', 'Egg, whole, raw'],
+    ['almonds', 'Almonds, NFS'],
+    ['olive oil', 'Olive oil'],
     ['rice', 'Rice, white, long-grain, regular, enriched, cooked'],
   ])('"%s" → %s first', (query, expected) => {
     expect(top(query)).toBe(expected)
@@ -45,12 +48,44 @@ describe('built-in USDA list', () => {
 
   it.each([
     ['chicken breast', /^Chicken, broilers or fryers, breast/],
-    ['milk', /^Milk, whole/],
+    ['milk', /^Milk, (NFS|whole)/],
     ['greek yogurt', /^Yogurt, Greek/],
     ['coffee', /^Beverages, coffee, brewed/],
-    ['oatmeal', /^Cereals, oats/],
+    ['oatmeal', /^Oatmeal, regular or quick/],
+    ['chicken', /^Chicken, broilers or fryers/],
     ['ground beef', /^Beef, ground/],
   ])('"%s" finds the everyday food first', (query, pattern) => {
+    expect(top(query)).toMatch(pattern)
+  })
+
+  // Foods as people actually eat them (FNDDS). The generic version comes first.
+  it.each([
+    ['pizza', /^Pizza, cheese, from restaurant or fast food, medium crust/],
+    ['pepperoni pizza', /^Pizza with pepperoni, from restaurant or fast food/],
+    ['burrito', /^Burrito, NFS/],
+    ['burrito bowl', /^Burrito bowl, NFS/],
+    ['taco', /^Taco, NFS/],
+    ['cheeseburger', /^Cheeseburger, NFS/],
+    ['hamburger', /^Hamburger, NFS/],
+    ['hot dog', /^Hot dog, NFS/],
+    ['chicken nuggets', /^Chicken nuggets, NFS/],
+    ['mac and cheese', /^Macaroni or noodles with cheese$/],
+    ['pad thai', /^Pad Thai, NFS/],
+    ['fried rice', /^Rice, fried, NFS/],
+    ['ramen', /^Ramen bowl, NFS/],
+    ['sushi', /^Sushi, NFS/],
+    ['latte', /^Coffee, Latte$/],
+    ['iced coffee', /^Iced Coffee, brewed$/],
+    ['smoothie', /^Fruit smoothie, NFS/],
+    ['bagel', /^Bagel$/],
+    ['pancakes', /^Pancakes, (plain|NFS)/],
+    ['grilled cheese', /^Grilled cheese sandwich, NFS/],
+    ['french fries', /^Potato, french fries, NFS/],
+    ['fries', /^Potato, french fries, NFS/],
+    ['soda', /^Soft drink, cola$/],
+    ['bread', /^Bread, white$/],
+    ['ice cream', /^Ice cream, NFS/],
+  ])('"%s" finds the everyday dish first', (query, pattern) => {
     expect(top(query)).toMatch(pattern)
   })
 
@@ -61,6 +96,11 @@ describe('built-in USDA list', () => {
 
   it('title-cases brand names', () => {
     expect(prettyFoodName("Cereals ready-to-eat, KELLOGG'S RAISIN BRAN")).toBe("Cereals ready-to-eat, Kellogg's Raisin Bran")
+  })
+
+  it('spells out USDA survey shorthand', () => {
+    expect(prettyFoodName('Burrito bowl, NFS')).toBe('Burrito bowl, typical')
+    expect(prettyFoodName('Egg, whole, baked, NS as to fat')).toBe('Egg, whole, baked, any fat')
   })
 })
 
@@ -137,11 +177,24 @@ describe('mealForTime', () => {
 })
 
 describe('defaultServingIndex', () => {
-  it('prefers a medium size, then the label serving', () => {
-    const banana = foods.find((f) => f[1] === 'Bananas, raw')!
-    const opts = usdaServingOptions(banana)
-    expect(opts[defaultServingIndex(opts)].label).toMatch(/^1 medium/)
-    const rice = foods.find((f) => f[1] === 'Rice, white, long-grain, regular, enriched, cooked')!
-    expect(usdaServingOptions(rice)[defaultServingIndex(usdaServingOptions(rice))].label).toBe('1 cup (158 g)')
+  const defaultFor = (name: string) => {
+    const food = foods.find((f) => f[1] === name)!
+    const opts = usdaServingOptions(food)
+    return opts[defaultServingIndex(opts, food[1])].label
+  }
+
+  it('prefers one of the food itself, then a medium size, then the label serving', () => {
+    expect(defaultFor('Banana, raw')).toMatch(/^1 banana \(/)
+    expect(defaultFor('Bananas, raw')).toMatch(/^1 medium/)
+    expect(defaultFor('Cheeseburger, NFS')).toMatch(/^1 cheeseburger \(/)
+    expect(defaultFor('Rice, white, long-grain, regular, enriched, cooked')).toBe('1 cup (158 g)')
+  })
+
+  it('never defaults to a tiny or whole-pie serving', () => {
+    expect(defaultFor('Burrito, NFS')).toMatch(/^1 small\/regular/)
+    expect(defaultFor('Bagel')).toMatch(/^1 regular/)
+    expect(defaultFor('Pancakes, plain')).toMatch(/^1 medium pancake/)
+    expect(defaultFor('Pizza, cheese, from restaurant or fast food, medium crust')).toMatch(/^1 piece/)
+    expect(defaultFor('Potato, french fries, NFS')).toMatch(/^1 cup/)
   })
 })

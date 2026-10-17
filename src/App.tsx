@@ -16,6 +16,7 @@ import { TargetsScreen } from './features/meals/TargetsScreen'
 import { OnboardingScreen } from './features/onboarding/OnboardingScreen'
 import { PlanScreen } from './features/plan/PlanScreen'
 import { ProgressScreen } from './features/progress/ProgressScreen'
+import { LogRunScreen } from './features/running/LogRunScreen'
 import { FinishScreen } from './features/session/FinishScreen'
 import { SessionScreen } from './features/session/SessionScreen'
 import { SettingsScreen } from './features/settings/SettingsScreen'
@@ -52,6 +53,7 @@ export default function App() {
         <Route element={<OnboardedGate />}>
           <Route path="/session/:workoutId" element={<SessionScreen />} />
           <Route path="/session/:workoutId/finish" element={<FinishScreen />} />
+          <Route path="/runs/log" element={<LogRunScreen />} />
           <Route element={<TabLayout />}>
             <Route index element={<TodayScreen />} />
             <Route path="/plan" element={<PlanScreen />} />

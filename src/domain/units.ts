@@ -38,3 +38,32 @@ export function formatHeight(cm: number, units: Units): string {
   const { feet, inches } = cmToFeetInches(cm)
   return `${feet}′ ${inches}″`
 }
+
+// ----- Distance and pace (stored in meters and seconds) -----
+
+export const METERS_PER_MILE = 1609.344
+const metersPerUnit = (units: Units) => (units === 'imperial' ? METERS_PER_MILE : 1000)
+
+export const distanceUnitLabel = (units: Units) => (units === 'imperial' ? 'mi' : 'km')
+
+export const toDisplayDistance = (meters: number, units: Units) => meters / metersPerUnit(units)
+export const fromDisplayDistance = (value: number, units: Units) => value * metersPerUnit(units)
+
+/** "3.1 mi", "5 km", "21.1 km". Whole numbers drop the decimal. */
+export function formatDistance(meters: number, units: Units, digits = 1): string {
+  const v = toDisplayDistance(meters, units)
+  const rounded = Math.round(v * 10 ** digits) / 10 ** digits
+  return `${rounded} ${distanceUnitLabel(units)}`
+}
+
+/** Seconds per mile or kilometer; undefined when distance or time is missing. */
+export function paceSecPerUnit(meters: number, durationSec: number, units: Units): number | undefined {
+  const d = toDisplayDistance(meters, units)
+  return d > 0 && durationSec > 0 ? durationSec / d : undefined
+}
+
+/** "9:41 /mi" */
+export function formatPace(secPerUnit: number, units: Units): string {
+  const total = Math.round(secPerUnit)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')} /${distanceUnitLabel(units)}`
+}

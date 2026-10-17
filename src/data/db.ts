@@ -93,6 +93,11 @@ db.version(4).stores({
   progressionSuggestions: 'id, exerciseId, status, workoutId',
 })
 
+// v5: runs are logged (with their date, for charts). No run rows existed before this version.
+db.version(5).stores({
+  runs: 'id, workoutId, stravaActivityId, date',
+})
+
 /** Convert a v1 profile row in place. Safe to run on rows that are already v2. */
 export function migrateProfileToV2(row: Record<string, unknown>): void {
   if (!Array.isArray(row.goals)) row.goals = typeof row.mainGoal === 'string' ? [row.mainGoal] : ['general']

@@ -5,12 +5,17 @@ import { kgToLb, lbToKg } from '../domain/units'
 import { exportAll, importBackup, parseBackup } from './backup'
 import { db, migrateProfileToV2, TABLE_NAMES } from './db'
 import { ensureExerciseSeed } from './repositories/exerciseRepo'
-import { activatePlan, getPlannedBetween, getPlannedForDate } from './repositories/planRepo'
+import { activatePlan, ensurePlannedSessions, getPlannedBetween, getPlannedForDate, markMissedSessions } from './repositories/planRepo'
 import { getProfile, saveOnboarding, setHealthFlags, updateProfile } from './repositories/profileRepo'
 import { findFoodByBarcode, getCached, getEntriesForDate, listRecentFoods, listSavedMeals, logFood, logSavedMeal, saveMealAsFavorite, setCached, upsertFood } from './repositories/mealRepo'
 import { listPersonalRecords } from './repositories/recordsRepo'
 import {
   acceptSuggestion,
+  deleteWorkout,
+  getRunForWorkout,
+  listRunsBetween,
+  logRun,
+  updateRun,
   addExercise,
   discardWorkout,
   dismissSuggestion,
@@ -299,5 +304,79 @@ describe('health considerations', () => {
     expect(p.healthFlags).toEqual(['dairy', 'pregnancy'])
     expect(p.nutritionTargets).toBeUndefined()
     expect(p.nutritionTargetsBasis).toBeUndefined()
+  })
+})
+
+describe('running plans and runs', () => {
+  const runner = {
+    experienceLevel: 'some' as const,
+    goals: ['running' as const],
+    daysPerWeek: 3,
+    equipment: ['bodyweight' as const],
+    units: 'metric' as const,
+    runningGoal: { label: '10K' as const, distanceM: 10000, date: '2026-12-06' },
+  }
+  const onboardRunner = () => saveOnboarding(runner, generatePlan({ ...runner, startDate: '2026-09-28' }))
+
+  it('creates dated sessions from the running plan, including race day once it is near', async () => {
+    await onboardRunner()
+    const week = await getPlannedBetween('2026-09-28', '2026-10-04')
+    expect(week.map((s) => s.date)).toEqual(['2026-09-29', '2026-10-01', '2026-10-03'])
+    expect(week.every((s) => s.type === 'running' && s.targets.kind === 'run')).toBe(true)
+    const plan = (await db.plans.where('status').equals('active').first())!
+    expect(plan).toMatchObject({ type: 'running', goalDate: '2026-12-06', goalDistance: 10000, flaggedUnrealistic: false })
+    await ensurePlannedSessions('2026-12-31')
+    const race = await getPlannedForDate('2026-12-06')
+    expect(race?.targets).toMatchObject({ kind: 'run', runType: 'race', distanceM: 10000 })
+    expect(await getPlannedBetween('2026-12-07', '2026-12-31')).toEqual([])
+  })
+
+  it('marks unlogged past sessions missed, and nothing else moves', async () => {
+    await onboardRunner()
+    const before = await getPlannedBetween('2026-09-28', '2026-10-11')
+    expect(await markMissedSessions('2026-10-02')).toBe(2)
+    const after = await getPlannedBetween('2026-09-28', '2026-10-11')
+    expect(after.map((s) => [s.date, s.status])).toEqual(before.map((s) => [s.date, s.date < '2026-10-02' ? 'missed' : 'planned']))
+    expect(await markMissedSessions('2026-10-02')).toBe(0)
+  })
+
+  it('logs a run against its planned session, even one already marked missed', async () => {
+    await onboardRunner()
+    const tue = (await getPlannedForDate('2026-09-29'))!
+    await markMissedSessions('2026-09-30')
+    const id = await logRun({ date: '2026-09-29', distanceM: 4200, durationSec: 1500, difficulty: 4, notes: 'late log', plannedSessionId: tue.id })
+    expect((await db.plannedSessions.get(tue.id))!.status).toBe('done')
+    expect(await getRunForWorkout(id)).toMatchObject({ date: '2026-09-29', distanceM: 4200, durationSec: 1500, runType: 'easy' })
+    expect(await db.workouts.get(id)).toMatchObject({ type: 'running', status: 'completed', name: tue.name, difficulty: 4, notes: 'late log' })
+    expect(await listRunsBetween('2026-09-28', '2026-10-04')).toHaveLength(1)
+  })
+
+  it('logs an unplanned run as an easy run and lets distance and time be fixed', async () => {
+    await onboardRunner()
+    const id = await logRun({ date: '2026-09-28', distanceM: 3000, durationSec: 1200 })
+    expect(await db.workouts.get(id)).toMatchObject({ name: 'Run', plannedSessionId: undefined })
+    await updateRun(id, { distanceM: 5000, durationSec: 1800 })
+    expect(await getRunForWorkout(id)).toMatchObject({ distanceM: 5000, durationSec: 1800 })
+    expect((await db.workouts.get(id))!.durationSec).toBe(1800)
+  })
+
+  it('deleting a logged run puts its session back to planned or missed', async () => {
+    await onboardRunner()
+    const tue = (await getPlannedForDate('2026-09-29'))!
+    const id = await logRun({ date: '2026-09-29', distanceM: 4000, durationSec: 1500, plannedSessionId: tue.id })
+    await deleteWorkout(id)
+    expect(await db.runs.count()).toBe(0)
+    expect(await db.workouts.get(id)).toBeUndefined()
+    expect((await db.plannedSessions.get(tue.id))!.status).toBe('planned') // Tuesday is still ahead
+  })
+
+  it('backs up and restores runs and the running plan', async () => {
+    await onboardRunner()
+    await logRun({ date: '2026-09-28', distanceM: 3000, durationSec: 1200 })
+    const backup = parseBackup(JSON.stringify(await exportAll()))
+    await Promise.all(TABLE_NAMES.map((t) => db.table(t).clear()))
+    await importBackup(backup)
+    expect(await db.runs.count()).toBe(1)
+    expect((await db.plans.toArray())[0].sessions?.length).toBeGreaterThan(20)
   })
 })

@@ -4,7 +4,9 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, ChoiceList } from '../../components/ui'
 import { requestPersistentStorage } from '../../data/backup'
 import { getProfile, saveOnboarding, updateProfile, type OnboardingAnswers } from '../../data/repositories/profileRepo'
+import { formatDate, todayISO } from '../../domain/dates'
 import { generatePlan } from '../../domain/planGenerator'
+import { checkRunningGoal } from '../../domain/runningPlan'
 import type { Equipment, ExperienceLevel, MainGoal, Units } from '../../domain/types'
 import { EXPERIENCE_OPTIONS, GOAL_OPTIONS } from '../../lib/labels'
 import { BodyStatsStep, type BodyStats } from './BodyStatsStep'
@@ -44,27 +46,43 @@ function OnboardingFlow({ editing, initial }: { editing: boolean; initial: Draft
   const [stepIndex, setStepIndex] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** The too-soon warning is showing on the running step. */
+  const [goalWarning, setGoalWarning] = useState(false)
 
   const running = !!draft.goals?.includes('running')
   const steps = useMemo(() => onboardingSteps({ editing, running }), [editing, running])
 
   const step = steps[Math.min(stepIndex, steps.length - 1)]
-  const set = (changes: Draft) => setDraft((d) => ({ ...d, ...changes }))
+  const set = (changes: Draft) => {
+    setDraft((d) => ({ ...d, ...changes }))
+    if ('runningGoal' in changes || 'experienceLevel' in changes) setGoalWarning(false)
+  }
   const next = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1))
   const back = () => (stepIndex === 0 ? (editing ? navigate('/settings') : undefined) : setStepIndex((i) => i - 1))
 
   const complete = draft.experienceLevel && draft.goals?.length && draft.daysPerWeek && draft.equipment?.length && draft.units
+  const runningGoal = running ? draft.runningGoal : undefined
   const plan = useMemo(
-    () => (complete ? generatePlan({ experienceLevel: draft.experienceLevel!, goals: draft.goals!, daysPerWeek: draft.daysPerWeek!, equipment: draft.equipment! }) : null),
-    [complete, draft.experienceLevel, draft.goals, draft.daysPerWeek, draft.equipment],
+    () =>
+      complete
+        ? generatePlan({ experienceLevel: draft.experienceLevel!, goals: draft.goals!, daysPerWeek: draft.daysPerWeek!, equipment: draft.equipment!, runningGoal })
+        : null,
+    [complete, draft.experienceLevel, draft.goals, draft.daysPerWeek, draft.equipment, runningGoal],
   )
+  const goalCheck = runningGoal && draft.experienceLevel ? checkRunningGoal(runningGoal, draft.experienceLevel, todayISO()) : null
+
+  /** Continue from the running step: a date that's too soon gets the warning first. */
+  function continueFromRunning() {
+    if (goalCheck && !goalCheck.realistic && !goalWarning) setGoalWarning(true)
+    else next()
+  }
 
   async function accept() {
     if (!plan || !complete) return
     setSaving(true)
     setError(null)
     try {
-      await saveOnboarding(draft as OnboardingAnswers, plan)
+      await saveOnboarding({ ...(draft as OnboardingAnswers), runningGoal }, plan)
       if (!editing) {
         const persisted = await requestPersistentStorage()
         await updateProfile({ persistentStorage: persisted })
@@ -174,14 +192,24 @@ function OnboardingFlow({ editing, initial }: { editing: boolean; initial: Draft
         )}
 
         {step === 'running' && (
-          <Question title="What are you running toward?" hint="Your full running plan arrives in the next update. We’ll save your goal now.">
+          <Question title="What are you running toward?" hint="Steady builds a week-by-week plan that ends on your goal date. Skip this for easy runs with no date.">
             <RunningGoalStep units={draft.units ?? 'imperial'} value={draft.runningGoal} onChange={(runningGoal) => set({ runningGoal })} />
+            {goalWarning && goalCheck && !goalCheck.realistic && (
+              <section role="alert" className="flex flex-col gap-2 rounded-[20px] bg-surface-2 p-4 ring-1 ring-gold/40 ring-inset">
+                <h2 className="text-[17px] font-semibold text-gold">That date may be too soon</h2>
+                <p className="text-[15px]">{goalCheck.reason}</p>
+                <p className="text-[14px] text-muted">
+                  You can move the date to {formatDate(goalCheck.suggestedDate, { weekday: 'short', month: 'long', day: 'numeric' })}, or continue anyway and Steady will
+                  shorten the plan to fit. It will still add no more than 10% a week, so it will peak lower.
+                </p>
+              </section>
+            )}
           </Question>
         )}
 
         {step === 'review' && plan && (
           <Question title="Here’s your plan">
-            <PlanPreview plan={plan} />
+            <PlanPreview plan={plan} units={draft.units ?? 'imperial'} />
             {error && (
               <p role="alert" className="text-danger">
                 {error}
@@ -216,9 +244,24 @@ function OnboardingFlow({ editing, initial }: { editing: boolean; initial: Draft
               Adjust answers
             </Button>
           </>
+        ) : step === 'running' && goalWarning && goalCheck && !goalCheck.realistic ? (
+          <>
+            <Button
+              block
+              onClick={() => {
+                set({ runningGoal: { ...draft.runningGoal!, date: goalCheck.suggestedDate } })
+                next()
+              }}
+            >
+              Move my date to {formatDate(goalCheck.suggestedDate, { month: 'short', day: 'numeric' })}
+            </Button>
+            <Button block variant="secondary" onClick={next}>
+              Continue anyway
+            </Button>
+          </>
         ) : (
           <>
-            <Button block onClick={next} disabled={!canContinue[step]}>
+            <Button block onClick={step === 'running' ? continueFromRunning : next} disabled={!canContinue[step]}>
               Continue
             </Button>
             {(step === 'body' || step === 'running') && (
