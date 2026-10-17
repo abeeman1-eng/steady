@@ -10,6 +10,7 @@ export const MUSCLE_LABELS: Record<MuscleGroup, { name: string; where: string }>
   hamstrings: { name: 'Hamstrings', where: 'back of thighs' },
   glutes: { name: 'Glutes', where: 'butt and hips' },
   core: { name: 'Core', where: 'abs and obliques' },
+  calves: { name: 'Calves', where: 'back of lower legs' },
 }
 
 /** Extra words that should find a muscle group. */
@@ -23,6 +24,7 @@ const MUSCLE_SYNONYMS: Record<MuscleGroup, string[]> = {
   hamstrings: ['hamstring', 'hammies', 'legs'],
   glutes: ['glute', 'butt', 'booty', 'hips'],
   core: ['abs', 'ab', 'stomach', 'obliques'],
+  calves: ['calf', 'lower legs', 'legs'],
 }
 
 const words = (s: string) =>

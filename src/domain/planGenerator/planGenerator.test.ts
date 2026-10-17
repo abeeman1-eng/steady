@@ -209,3 +209,33 @@ describe('generatePlan: multiple goals', () => {
     }
   })
 })
+
+describe('generatePlan: main lifts', () => {
+  const MAIN = new Set(['squat', 'hinge', 'lunge', 'horizontalPush', 'verticalPush', 'horizontalPull', 'verticalPull'])
+  const levels: ExperienceLevel[] = ['new', 'returning', 'some', 'experienced', 'advanced']
+  const kits: Equipment[][] = [['bodyweight'], ['dumbbells'], ['bands'], ['gym']]
+
+  it('never fills a main-lift slot with an isolation move when a compound one is available', () => {
+    for (const experienceLevel of levels)
+      for (const equipment of kits)
+        for (const daysPerWeek of [3, 4, 5]) {
+          const plan = generatePlan({ experienceLevel, equipment, goals: ['strength'], daysPerWeek })
+          const available = expandEquipment(equipment)
+          for (const s of plan.weekly) {
+            if (s.targets.kind !== 'strength') continue
+            for (const t of s.targets.exercises) {
+              const ex = EXERCISES_BY_ID.get(t.exerciseId)!
+              if (!MAIN.has(ex.pattern) || ex.isCompound) continue
+              const compoundExists = EXERCISE_LIBRARY.some((o) => o.pattern === ex.pattern && o.isCompound && isAvailable(o, available))
+              expect(compoundExists, `${experienceLevel}/${equipment}/${daysPerWeek}: ${ex.id}`).toBe(false)
+            }
+          }
+        }
+  })
+
+  it('keeps calf raises out of generated plans', () => {
+    const plan = generatePlan({ experienceLevel: 'advanced', equipment: ['gym'], goals: ['strength'], daysPerWeek: 6 })
+    const ids = plan.weekly.flatMap((s) => (s.targets.kind === 'strength' ? s.targets.exercises.map((e) => e.exerciseId) : []))
+    expect(ids.some((id) => EXERCISES_BY_ID.get(id)!.pattern === 'calves')).toBe(false)
+  })
+})

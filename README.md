@@ -28,7 +28,7 @@ src/
     planGenerator/     Rule-based plans from onboarding answers
     runningPlan.ts     Dated running plans toward a goal, and the unrealistic-goal check
     progress.ts        Chart data: strength over time, weekly running, consistency calendar
-    exerciseLibrary.ts 45 exercises with step-by-step guides, form cues and substitutes
+    exerciseLibrary.ts 74 exercises with step-by-step guides, form cues and substitutes
     exerciseVideos.ts  A short YouTube video demo for each exercise
     records.ts         Epley 1RM and PR detection
     nutrition.ts       Meal math, serving options, barcode normalization, Open Food Facts parsing
@@ -65,8 +65,9 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 
 ### Exercises tab and video demos
 
-- The **Exercises** tab searches all 45 exercises by name, nickname ("RDL") or muscle ("glutes"). Each exercise page has a short video demo (all under 4 minutes) above the written steps, form tips, muscles worked and alternatives.
-- Videos come from established sources where possible (physical therapists, hospitals, certification bodies, major fitness channels). All 45 were checked as public and embeddable through YouTube's oEmbed service on October 17, 2026; a test checks every exercise has one. Outside videos can disappear, so recheck them every few months.
+- The **Exercises** tab searches all 74 exercises by name, nickname ("RDL") or muscle ("glutes"). Each exercise page has a short video demo (all under 4 minutes) above the written steps, form tips, muscles worked and alternatives.
+- Videos come from established sources where possible (physical therapists, hospitals, certification bodies, major fitness channels). All 74 were checked as public and embeddable through YouTube's oEmbed service on October 17, 2026; a test checks every exercise has one. Outside videos can disappear, so recheck them every few months.
+- **How plans use the library:** main-lift slots (squat, hinge, lunge, presses, rows, pulls) only get compound moves when one is available, so isolation moves such as the wall sit, leg extension and leg curl never replace a real squat or deadlift. Those, plus crunches, kickbacks, face pulls and calf raises, are in the guide and can be added to or swapped into any workout. Calf raises have their own category and aren't placed in plans automatically.
 - **Privacy:** nothing is requested from YouTube until the user taps Play, and videos play from YouTube's privacy-enhanced player (youtube-nocookie.com). Offline, the player says videos need a connection and the written steps still work.
 
 ### Running plans

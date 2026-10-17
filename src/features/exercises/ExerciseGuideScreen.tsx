@@ -6,7 +6,7 @@ import { EXERCISE_VIDEOS, videoLength } from '../../domain/exerciseVideos'
 import type { ExerciseDef, MovementPattern } from '../../domain/types'
 
 const BROWSE_GROUPS: { title: string; patterns: MovementPattern[] }[] = [
-  { title: 'Legs and glutes', patterns: ['squat', 'hinge', 'lunge'] },
+  { title: 'Legs and glutes', patterns: ['squat', 'hinge', 'lunge', 'calves'] },
   { title: 'Chest and shoulders (push)', patterns: ['horizontalPush', 'verticalPush'] },
   { title: 'Back (pull)', patterns: ['horizontalPull', 'verticalPull'] },
   { title: 'Arms and shoulders', patterns: ['biceps', 'triceps', 'shoulders'] },

@@ -14,6 +14,7 @@ export type MuscleGroup =
   | 'hamstrings'
   | 'glutes'
   | 'core'
+  | 'calves'
 
 export type MovementPattern =
   | 'squat'
@@ -27,6 +28,8 @@ export type MovementPattern =
   | 'triceps'
   | 'shoulders'
   | 'core'
+  /** Not used by plan generation; available in the guide and when adding exercises. */
+  | 'calves'
 
 export interface ExerciseDef {
   id: string

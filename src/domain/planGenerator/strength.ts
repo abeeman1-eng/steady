@@ -59,9 +59,13 @@ export const LEVEL_CONFIG: Record<
   },
 }
 
+/** Slots for main lifts, where a compound move should always come before an isolation one. */
+const MAIN_LIFT_PATTERNS = new Set<MovementPattern>(['squat', 'hinge', 'lunge', 'horizontalPush', 'verticalPush', 'horizontalPull', 'verticalPull'])
+
 /**
- * Candidates for a movement slot, best first. Everyone prefers loadable equipment (it is easier
- * to progress); beginners skip the most technical lifts and get the simplest variation first.
+ * Candidates for a movement slot, best first. In main-lift slots compound moves come first (leg
+ * press before leg extension). Then everyone prefers loadable equipment (it is easier to
+ * progress); beginners skip the most technical lifts and get the simplest variation first.
  */
 export function candidatesFor(pattern: MovementPattern, equipment: Equipment[], level: ExperienceLevel): ExerciseDef[] {
   const available = expandEquipment(equipment)
@@ -69,6 +73,7 @@ export function candidatesFor(pattern: MovementPattern, equipment: Equipment[], 
   return EXERCISE_LIBRARY.filter((e) => e.pattern === pattern && isAvailable(e, available))
     .filter((e) => !config.beginnerFriendly || e.difficulty < 3)
     .sort((a, b) => {
+      if (MAIN_LIFT_PATTERNS.has(pattern) && a.isCompound !== b.isCompound) return a.isCompound ? -1 : 1
       const byLoad = loadRank(a) - loadRank(b)
       if (byLoad !== 0) return byLoad
       return config.preferHarder ? b.difficulty - a.difficulty : a.difficulty - b.difficulty
@@ -96,7 +101,9 @@ export function buildStrengthSession(
   const targets: ExerciseTarget[] = []
   for (const pattern of blueprint) {
     if (targets.length >= maxExercises) break
-    const options = candidatesFor(pattern, equipment, level).filter((e) => !used.has(e.id))
+    let options = candidatesFor(pattern, equipment, level).filter((e) => !used.has(e.id))
+    // A main-lift slot never gets an isolation move (wall sit, leg extension) while a compound one is available.
+    if (MAIN_LIFT_PATTERNS.has(pattern) && options.some((e) => e.isCompound)) options = options.filter((e) => e.isCompound)
     if (options.length === 0) continue
     const pick = options[Math.min(variant, options.length - 1)]
     used.add(pick.id)

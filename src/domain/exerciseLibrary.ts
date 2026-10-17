@@ -156,6 +156,117 @@ const SEEDS: Seed[] = [
   { id: 'bird-dog', name: 'Bird dog', pattern: 'core', equipment: ['bodyweight'], difficulty: 1, isCompound: false, muscleGroups: ['core', 'back'],
     description: 'On hands and knees, reach one arm forward and the opposite leg back.',
     formCues: ['Keep your back flat like a table', 'Reach long, don’t lift high', 'Pause for a second each rep'] },
+  // ----- Added October 2026. Appended (not grouped above) so ties in plan generation still pick
+  // the original exercises and existing plans don't reshuffle. -----
+
+  // Squat
+  { id: 'sumo-squat', name: 'Dumbbell sumo squat', pattern: 'squat', equipment: ['dumbbells'], difficulty: 1, isCompound: true, muscleGroups: ['quads', 'glutes'],
+    description: 'In a wide stance with toes turned out, hold one dumbbell between your legs and squat.',
+    formCues: ['Feet wider than shoulders, toes turned out', 'Knees push out over your toes', 'Keep your chest tall as you lower'] },
+  { id: 'wall-sit', name: 'Wall sit', pattern: 'squat', equipment: ['bodyweight'], difficulty: 1, isCompound: false, muscleGroups: ['quads', 'glutes'], timed: true,
+    description: 'With your back against a wall, slide down until your knees bend and hold.',
+    formCues: ['Knees above your ankles, not past your toes', 'Back flat against the wall', 'Go less deep if your knees complain'] },
+  { id: 'leg-extension', name: 'Leg extension', pattern: 'squat', equipment: ['gym'], difficulty: 1, isCompound: false, muscleGroups: ['quads'],
+    description: 'Seated in the machine, straighten your knees to lift the pad, then lower it slowly.',
+    formCues: ['Line your knees up with the machine’s pivot', 'Pad rests just above your ankles', 'Lower slowly, don’t let the weight drop'] },
+
+  // Hinge
+  { id: 'barbell-deadlift', name: 'Barbell deadlift', pattern: 'hinge', equipment: ['gym'], difficulty: 3, isCompound: true, muscleGroups: ['hamstrings', 'glutes', 'back'],
+    description: 'Lift a barbell from the floor to standing by driving through your legs with a flat back.',
+    formCues: ['Bar over the middle of your foot', 'Flat back and braced stomach before you pull', 'Push the floor away, keep the bar close'] },
+  { id: 'hip-thrust', name: 'Barbell hip thrust', pattern: 'hinge', equipment: ['gym'], difficulty: 2, isCompound: true, muscleGroups: ['glutes', 'hamstrings'],
+    description: 'With your upper back on a bench and a padded bar on your hips, drive your hips up.',
+    formCues: ['Shoulder blades on the bench edge', 'Chin tucked, ribs down', 'Squeeze your glutes hard at the top'] },
+  { id: 'leg-curl', name: 'Lying leg curl', pattern: 'hinge', equipment: ['gym'], difficulty: 1, isCompound: false, muscleGroups: ['hamstrings'],
+    description: 'Lying face down in the machine, curl your heels toward your butt, then lower slowly.',
+    formCues: ['Knees just off the end of the bench', 'Hips stay pressed into the pad', 'Lower slowly for the full range'] },
+  { id: 'band-glute-kickback', name: 'Band glute kickback', pattern: 'hinge', equipment: ['bands'], difficulty: 1, isCompound: false, muscleGroups: ['glutes'],
+    description: 'On hands and knees with a band around your feet, push one leg back and up.',
+    formCues: ['Keep your back flat and still', 'Push through your heel', 'Do all reps on one side, then switch'] },
+
+  // Lunge
+  { id: 'bulgarian-split-squat', name: 'Bulgarian split squat', pattern: 'lunge', equipment: ['bodyweight'], difficulty: 2, isCompound: true, muscleGroups: ['quads', 'glutes'],
+    description: 'With your back foot up on a bench, lower your back knee toward the floor and rise.',
+    formCues: ['Front foot far enough forward that the heel stays down', 'Drop straight down', 'Hold dumbbells once bodyweight feels easy'] },
+  { id: 'walking-lunge', name: 'Walking lunge', pattern: 'lunge', equipment: ['bodyweight'], difficulty: 1, isCompound: true, muscleGroups: ['quads', 'glutes'],
+    description: 'Step forward into a lunge, then bring the back foot through into the next step.',
+    formCues: ['Take a long, controlled step', 'Back knee lowers toward the floor', 'Count each step as one rep'] },
+  { id: 'lateral-lunge', name: 'Lateral lunge', pattern: 'lunge', equipment: ['bodyweight'], difficulty: 2, isCompound: true, muscleGroups: ['quads', 'glutes'],
+    description: 'Step out to the side, sit back into that hip with the other leg straight, then push back.',
+    formCues: ['Toes point forward', 'Sit your hips back, chest up', 'Push off the bent leg to return'] },
+
+  // Horizontal push
+  { id: 'machine-chest-press', name: 'Machine chest press', pattern: 'horizontalPush', equipment: ['gym'], difficulty: 1, isCompound: true, muscleGroups: ['chest', 'triceps', 'shoulders'],
+    description: 'Seated in the machine, press the handles forward, then return them slowly.',
+    formCues: ['Handles line up with mid-chest', 'Shoulder blades pulled back against the pad', 'Stop just short of locking your elbows'] },
+  { id: 'dumbbell-fly', name: 'Dumbbell chest fly', pattern: 'horizontalPush', equipment: ['gym'], difficulty: 2, isCompound: false, muscleGroups: ['chest', 'shoulders'],
+    description: 'Lying on a bench, open your arms wide with soft elbows, then bring the dumbbells back together.',
+    formCues: ['Keep a slight bend in your elbows', 'Lower until you feel a chest stretch, no further', 'Use lighter weights than for pressing'] },
+  { id: 'knee-push-up', name: 'Knee push-up', pattern: 'horizontalPush', equipment: ['bodyweight'], difficulty: 1, isCompound: true, muscleGroups: ['chest', 'triceps', 'shoulders'],
+    description: 'A push-up with your knees on the floor, keeping a straight line from head to knees.',
+    formCues: ['Hips in line with your shoulders and knees', 'Elbows at about 45 degrees', 'Lower your chest close to the floor'] },
+
+  // Vertical push
+  { id: 'arnold-press', name: 'Arnold press', pattern: 'verticalPush', equipment: ['dumbbells'], difficulty: 2, isCompound: true, muscleGroups: ['shoulders', 'triceps'],
+    description: 'A shoulder press that starts with palms facing you and rotates to face forward as you press.',
+    formCues: ['Start with dumbbells at chin height, palms in', 'Rotate smoothly as you press up', 'Don’t arch your lower back'] },
+
+  // Horizontal pull
+  { id: 'barbell-row', name: 'Barbell bent-over row', pattern: 'horizontalPull', equipment: ['gym'], difficulty: 2, isCompound: true, muscleGroups: ['back', 'biceps'],
+    description: 'Hinged forward with a flat back, pull a barbell to your lower ribs.',
+    formCues: ['Hinge until your torso is about 45 degrees', 'Pull with your elbows, squeeze your shoulder blades', 'Keep your back flat throughout'] },
+
+  // Vertical pull
+  { id: 'pull-up', name: 'Pull-up', pattern: 'verticalPull', equipment: ['gym'], difficulty: 3, isCompound: true, muscleGroups: ['back', 'biceps'],
+    description: 'Hanging from a bar, pull your chest up toward it, then lower all the way down.',
+    formCues: ['Start from a full hang', 'Pull your elbows down toward your ribs', 'Lower slowly with control'] },
+  { id: 'assisted-pull-up', name: 'Assisted pull-up', pattern: 'verticalPull', equipment: ['gym'], difficulty: 1, isCompound: true, muscleGroups: ['back', 'biceps'],
+    description: 'A pull-up on a machine that supports part of your weight. More assistance makes it easier.',
+    formCues: ['More weight on the stack means more help', 'Pull your chest toward the bar', 'Lower all the way to straight arms'] },
+
+  // Arms
+  { id: 'hammer-curl', name: 'Hammer curl', pattern: 'biceps', equipment: ['dumbbells'], difficulty: 1, isCompound: false, muscleGroups: ['biceps'],
+    description: 'A curl with your palms facing each other, like holding a hammer.',
+    formCues: ['Palms face each other the whole time', 'Elbows stay by your sides', 'Lower slowly'] },
+  { id: 'barbell-curl', name: 'Barbell curl', pattern: 'biceps', equipment: ['gym'], difficulty: 1, isCompound: false, muscleGroups: ['biceps'],
+    description: 'Standing, curl a barbell from your thighs to your shoulders with palms up.',
+    formCues: ['Hands shoulder-width, palms up', 'Elbows pinned at your sides', 'No swinging: lower the weight if you need to'] },
+  { id: 'diamond-push-up', name: 'Diamond push-up', pattern: 'triceps', equipment: ['bodyweight'], difficulty: 3, isCompound: true, muscleGroups: ['triceps', 'chest', 'shoulders'],
+    description: 'A push-up with your hands close together under your chest, thumbs and fingers forming a diamond.',
+    formCues: ['Hands together under your chest', 'Elbows stay close to your body', 'Drop to your knees to make it easier'] },
+
+  // Shoulders
+  { id: 'band-face-pull', name: 'Band face pull', pattern: 'shoulders', equipment: ['bands'], difficulty: 1, isCompound: false, muscleGroups: ['shoulders', 'back'],
+    description: 'Pull a band anchored at head height toward your face, elbows high and wide.',
+    formCues: ['Anchor the band at about head height', 'Pull toward your forehead, hands ending by your ears', 'Squeeze your shoulder blades together'] },
+  { id: 'dumbbell-reverse-fly', name: 'Dumbbell reverse fly', pattern: 'shoulders', equipment: ['dumbbells'], difficulty: 1, isCompound: false, muscleGroups: ['shoulders', 'back'],
+    description: 'Hinged forward, raise light dumbbells out to your sides to work the backs of your shoulders.',
+    formCues: ['Flat back, hinged forward', 'Soft elbows, lead with your hands', 'Use light weights and move slowly'] },
+
+  // Core
+  { id: 'crunch', name: 'Crunch', pattern: 'core', equipment: ['bodyweight'], difficulty: 1, isCompound: false, muscleGroups: ['core'],
+    description: 'On your back with knees bent, curl your shoulders off the floor, then lower.',
+    formCues: ['Hands lightly by your head, don’t pull your neck', 'Curl up, don’t sit all the way up', 'Breathe out as you lift'] },
+  { id: 'mountain-climber', name: 'Mountain climber', pattern: 'core', equipment: ['bodyweight'], difficulty: 2, isCompound: false, muscleGroups: ['core', 'shoulders'], timed: true,
+    description: 'From a high plank, drive your knees toward your chest one at a time.',
+    formCues: ['Hands under your shoulders', 'Hips level with your shoulders', 'Go slower to keep good form'] },
+  { id: 'russian-twist', name: 'Russian twist', pattern: 'core', equipment: ['bodyweight'], difficulty: 2, isCompound: false, muscleGroups: ['core'],
+    description: 'Sitting leaned back with knees bent, rotate your chest and hands from side to side.',
+    formCues: ['Lean back with a long, straight spine', 'Turn your chest, not just your arms', 'Keep feet on the floor to make it easier'] },
+  { id: 'hanging-knee-raise', name: 'Hanging knee raise', pattern: 'core', equipment: ['gym'], difficulty: 3, isCompound: false, muscleGroups: ['core'],
+    description: 'Hanging from a bar, bring your knees up toward your chest without swinging.',
+    formCues: ['Start from a still hang', 'Curl your hips up, don’t just lift your knees', 'Lower slowly to stop swinging'] },
+  { id: 'pallof-press', name: 'Pallof press', pattern: 'core', equipment: ['bands'], difficulty: 1, isCompound: false, muscleGroups: ['core'],
+    description: 'Standing side-on to an anchored band, press it straight out from your chest and resist the twist.',
+    formCues: ['Band anchored at chest height, standing side-on', 'Press straight out without letting your body turn', 'Do all reps facing one way, then switch'] },
+
+  // Calves
+  { id: 'calf-raise', name: 'Standing calf raise', pattern: 'calves', equipment: ['bodyweight'], difficulty: 1, isCompound: false, muscleGroups: ['calves'],
+    description: 'Rise up onto the balls of your feet, pause, then lower your heels slowly.',
+    formCues: ['Hold a wall or rail for balance', 'Rise as high as you can', 'Lower slowly; use a step edge for more range'] },
+  { id: 'single-leg-calf-raise', name: 'Single-leg calf raise', pattern: 'calves', equipment: ['bodyweight'], difficulty: 2, isCompound: false, muscleGroups: ['calves'],
+    description: 'A calf raise on one foot, for when two-footed raises feel easy.',
+    formCues: ['Lightly hold a wall for balance only', 'Keep your knee straight but not locked', 'Do all reps on one side, then switch'] },
 ]
 
 /** Extra substitutes where the same movement pattern has no bodyweight or dumbbell option. */

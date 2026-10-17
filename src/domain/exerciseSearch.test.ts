@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EXERCISE_LIBRARY } from './exerciseLibrary'
+import { EXERCISES_BY_ID, EXERCISE_LIBRARY } from './exerciseLibrary'
 import { MUSCLE_LABELS, searchExercises } from './exerciseSearch'
 
 const ids = (q: string) => searchExercises(q, EXERCISE_LIBRARY).map((e) => e.id)
@@ -39,7 +39,8 @@ describe('searchExercises', () => {
 
   it('searches by muscle, main focus first', () => {
     const glutes = ids('glutes')
-    expect(glutes[0]).toBe('glute-bridge')
+    expect(EXERCISES_BY_ID.get(glutes[0])!.muscleGroups[0]).toBe('glutes')
+    expect(glutes.slice(0, 3)).toContain('glute-bridge')
     expect(glutes).toContain('barbell-back-squat')
     expect(ids('abs')).toEqual(expect.arrayContaining(['plank', 'dead-bug']))
     expect(ids('hamstrings')).toContain('romanian-deadlift')

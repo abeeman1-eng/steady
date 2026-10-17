@@ -24,7 +24,7 @@ export type Suggestion =
   | { kind: 'hold'; reason: string }
 
 const LB = 0.45359237
-const LOWER_BODY: MovementPattern[] = ['squat', 'hinge', 'lunge']
+const LOWER_BODY: MovementPattern[] = ['squat', 'hinge', 'lunge', 'calves']
 /** Ratings of 9–10 mean "max effort": no increase, whatever the reps. */
 export const MAX_RATING_FOR_INCREASE = 8
 

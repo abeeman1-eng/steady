@@ -472,4 +472,295 @@ export const EXERCISE_GUIDES: Record<string, { steps: string[]; aliases?: string
       'Repeat on the other side. Each side counts as one rep.',
     ],
   },
+  // ----- Added October 2026 -----
+  'sumo-squat': {
+    aliases: ['sumo', 'plie squat', 'wide squat', 'inner thighs'],
+    steps: [
+      'Stand with your feet wider than shoulder-width, toes turned out about 45 degrees.',
+      'Hold one dumbbell by its top end with both hands, hanging between your legs.',
+      'Brace your stomach and push your knees out as you sit straight down.',
+      'Lower until your thighs are about parallel to the floor, keeping your chest tall.',
+      'Press through your heels to stand up, squeezing your glutes at the top.',
+    ],
+  },
+  'wall-sit': {
+    aliases: ['wall squat', 'wall sits', 'isometric squat'],
+    steps: [
+      'Stand with your back flat against a wall and your feet about two feet in front of it.',
+      'Slide down the wall until your knees are bent, ideally to about 90 degrees.',
+      'Check that your knees are above your ankles, not past your toes.',
+      'Hold the position, breathing steadily, with your back and head against the wall.',
+      'Slide back up to finish. Start with a shallower bend if a full sit is too much.',
+    ],
+  },
+  'leg-extension': {
+    aliases: ['leg extensions', 'quad extension', 'knee extension'],
+    steps: [
+      'Adjust the seat so your knees line up with the machine’s pivot point.',
+      'Set the ankle pad so it rests just above your ankles, and hold the side handles.',
+      'Straighten your knees to lift the pad until your legs are almost straight.',
+      'Pause and squeeze the fronts of your thighs.',
+      'Lower slowly back to the start without letting the weight stack touch down.',
+    ],
+  },
+  'barbell-deadlift': {
+    aliases: ['deadlift', 'conventional deadlift', 'dl', 'deadlifts'],
+    steps: [
+      'Stand with your feet hip-width apart and the bar over the middle of your feet.',
+      'Hinge down and grip the bar just outside your legs, shins touching the bar.',
+      'Flatten your back, lift your chest and brace your stomach hard.',
+      'Push the floor away with your legs, keeping the bar close, until you stand tall.',
+      'Lower the bar by pushing your hips back, then bending your knees once it passes them.',
+    ],
+  },
+  'hip-thrust': {
+    aliases: ['hip thrusts', 'glute thrust', 'barbell glute bridge'],
+    steps: [
+      'Sit on the floor with your upper back against a bench and a padded bar over your hips.',
+      'Plant your feet flat, about hip-width, so your shins are vertical at the top.',
+      'Tuck your chin and brace your stomach.',
+      'Drive through your heels to lift your hips until your body is flat from shoulders to knees.',
+      'Squeeze your glutes for a second, then lower your hips under control.',
+    ],
+  },
+  'leg-curl': {
+    aliases: ['hamstring curl', 'leg curls', 'lying hamstring curl', 'prone leg curl'],
+    steps: [
+      'Lie face down on the machine with your knees just past the end of the bench.',
+      'Set the pad so it rests just above your heels, and hold the handles.',
+      'Keeping your hips pressed down, curl your heels toward your butt.',
+      'Pause and squeeze the backs of your thighs.',
+      'Lower slowly until your legs are almost straight.',
+    ],
+  },
+  'band-glute-kickback': {
+    aliases: ['glute kickback', 'donkey kick', 'kickbacks', 'butt'],
+    steps: [
+      'Get on your hands and knees with a loop band around both feet or ankles.',
+      'Brace your stomach so your back stays flat.',
+      'Keeping the knee bent, push one foot back and up toward the ceiling.',
+      'Squeeze your glute at the top without arching your lower back.',
+      'Lower slowly. Do all reps on one side, then switch.',
+    ],
+  },
+  'bulgarian-split-squat': {
+    aliases: ['bss', 'rear foot elevated split squat', 'split squat bench'],
+    steps: [
+      'Stand about two feet in front of a bench and rest the top of one foot on it behind you.',
+      'Stand tall with your weight on the front foot, holding dumbbells if you use them.',
+      'Lower your back knee straight down toward the floor.',
+      'Go until your front thigh is about parallel to the floor, front heel down.',
+      'Push through your front foot to stand. Do all reps, then switch legs.',
+    ],
+  },
+  'walking-lunge': {
+    aliases: ['walking lunges', 'lunges', 'lunge'],
+    steps: [
+      'Stand tall with your feet hip-width apart and your hands on your hips.',
+      'Take a long step forward and lower until both knees are bent about 90 degrees.',
+      'Keep your chest up and your front knee over your ankle.',
+      'Push through your front foot and bring your back foot forward into the next step.',
+      'Keep alternating legs as you move forward. Each step counts as one rep.',
+    ],
+  },
+  'lateral-lunge': {
+    aliases: ['side lunge', 'side lunges', 'cossack', 'inner thighs'],
+    steps: [
+      'Stand with your feet together, toes pointing forward.',
+      'Take a big step out to one side.',
+      'Sit your hips back and bend that knee, keeping the other leg straight.',
+      'Keep your chest up and both feet flat on the floor.',
+      'Push off the bent leg to return to the start. Alternate sides or do all reps on one side.',
+    ],
+  },
+  'machine-chest-press': {
+    aliases: ['chest press', 'chest press machine', 'seated chest press'],
+    steps: [
+      'Adjust the seat so the handles line up with the middle of your chest.',
+      'Sit with your back against the pad and grip the handles.',
+      'Pull your shoulder blades back and down.',
+      'Press the handles forward until your arms are nearly straight.',
+      'Return slowly until you feel a stretch across your chest.',
+    ],
+  },
+  'dumbbell-fly': {
+    aliases: ['chest fly', 'flyes', 'flys', 'pec fly'],
+    steps: [
+      'Lie on a flat bench holding light dumbbells above your chest, palms facing each other.',
+      'Bend your elbows slightly and keep that bend the whole time.',
+      'Open your arms wide in an arc until you feel a stretch across your chest.',
+      'Stop when your elbows are about level with the bench.',
+      'Bring the dumbbells back together over your chest, as if hugging a big tree.',
+    ],
+  },
+  'knee-push-up': {
+    aliases: ['modified push-up', 'push up on knees', 'easy push-up', 'pushup'],
+    steps: [
+      'Start on your hands and knees, hands a little wider than your shoulders.',
+      'Walk your hands forward until your body is straight from head to knees.',
+      'Brace your stomach and squeeze your glutes.',
+      'Bend your elbows to lower your chest toward the floor, elbows at about 45 degrees.',
+      'Press back up to straight arms.',
+    ],
+  },
+  'arnold-press': {
+    aliases: ['arnold', 'rotating shoulder press', 'dumbbell press'],
+    steps: [
+      'Sit or stand holding dumbbells in front of your chin, palms facing you.',
+      'Brace your stomach and keep your ribs down.',
+      'Press the dumbbells up while rotating your palms to face forward.',
+      'Finish with your arms straight overhead, palms forward.',
+      'Reverse the movement on the way down, ending with palms facing you.',
+    ],
+  },
+  'barbell-row': {
+    aliases: ['bent over row', 'bb row', 'barbell bent over row', 'pendlay row'],
+    steps: [
+      'Hold a barbell with an overhand grip, hands just wider than your shoulders.',
+      'Hinge at your hips with soft knees until your torso is about 45 degrees.',
+      'Let the bar hang below your shoulders with a flat back.',
+      'Pull the bar to your lower ribs, driving your elbows back.',
+      'Squeeze your shoulder blades together, then lower the bar slowly.',
+    ],
+  },
+  'pull-up': {
+    aliases: ['pullup', 'pull ups', 'chin up', 'chin-up'],
+    steps: [
+      'Grip the bar with your palms facing away, hands a little wider than your shoulders.',
+      'Hang with straight arms and brace your stomach.',
+      'Pull your elbows down toward your ribs to lift your chest toward the bar.',
+      'Go until your chin is over the bar.',
+      'Lower slowly all the way back to a full hang.',
+    ],
+  },
+  'assisted-pull-up': {
+    aliases: ['assisted pullup', 'pull up machine', 'gravitron', 'assisted chin up'],
+    steps: [
+      'Set the weight stack. More weight gives more help, so start higher and reduce it over time.',
+      'Step or kneel onto the platform and grip the handles above you.',
+      'Start with straight arms and your chest up.',
+      'Pull your elbows down to lift your chest toward the handles.',
+      'Lower slowly until your arms are straight again.',
+    ],
+  },
+  'hammer-curl': {
+    aliases: ['hammer curls', 'neutral grip curl', 'curl', 'forearms'],
+    steps: [
+      'Stand holding dumbbells at your sides, palms facing your thighs.',
+      'Keep your elbows close to your body.',
+      'Curl the dumbbells up toward your shoulders, palms still facing each other.',
+      'Squeeze at the top without letting your elbows drift forward.',
+      'Lower slowly to straight arms.',
+    ],
+  },
+  'barbell-curl': {
+    aliases: ['bb curl', 'bicep curl', 'curl', 'straight bar curl'],
+    steps: [
+      'Stand holding a barbell with palms up, hands about shoulder-width apart.',
+      'Let the bar rest against your thighs, elbows by your sides.',
+      'Curl the bar up toward your shoulders without leaning back.',
+      'Squeeze your biceps at the top.',
+      'Lower the bar slowly until your arms are straight.',
+    ],
+  },
+  'diamond-push-up': {
+    aliases: ['diamond pushup', 'close grip push-up', 'triangle push-up', 'triceps push-up'],
+    steps: [
+      'Start in a high plank with your hands together under your chest.',
+      'Touch your thumbs and index fingers to make a diamond shape.',
+      'Keep your body in a straight line from head to heels.',
+      'Lower your chest toward your hands, elbows staying close to your sides.',
+      'Press back up. Drop to your knees to make it easier.',
+    ],
+  },
+  'band-face-pull': {
+    aliases: ['face pull', 'face pulls', 'rear delts', 'posture'],
+    steps: [
+      'Anchor a band at about head height and hold one end in each hand, palms down.',
+      'Step back until the band is tight, arms straight in front of you.',
+      'Pull the band toward your forehead, elbows high and wide.',
+      'Finish with your hands beside your ears and your shoulder blades squeezed.',
+      'Return slowly to straight arms.',
+    ],
+  },
+  'dumbbell-reverse-fly': {
+    aliases: ['reverse fly', 'rear delt fly', 'bent over fly', 'rear delts'],
+    steps: [
+      'Hold light dumbbells and hinge forward at your hips with a flat back.',
+      'Let the dumbbells hang below your chest, palms facing each other.',
+      'With soft elbows, raise your arms out to the sides.',
+      'Lift until your arms are about level with your body, squeezing your shoulder blades.',
+      'Lower the dumbbells slowly back down.',
+    ],
+  },
+  crunch: {
+    aliases: ['crunches', 'sit up', 'ab crunch', 'abs'],
+    steps: [
+      'Lie on your back with your knees bent and feet flat on the floor.',
+      'Rest your fingertips lightly by your head or cross your arms on your chest.',
+      'Breathe out and curl your head and shoulders off the floor.',
+      'Lift until your shoulder blades clear the floor, keeping your lower back down.',
+      'Lower slowly back down.',
+    ],
+  },
+  'mountain-climber': {
+    aliases: ['mountain climbers', 'climbers', 'cardio abs'],
+    steps: [
+      'Start in a high plank with your hands under your shoulders.',
+      'Brace your stomach so your hips stay level with your shoulders.',
+      'Drive one knee toward your chest.',
+      'Switch legs, bringing the other knee in as the first foot goes back.',
+      'Keep alternating at a steady pace for the set time.',
+    ],
+  },
+  'russian-twist': {
+    aliases: ['russian twists', 'seated twist', 'obliques'],
+    steps: [
+      'Sit with your knees bent and feet on the floor.',
+      'Lean back slightly with a long, straight spine and clasp your hands in front of you.',
+      'Rotate your chest and hands to one side.',
+      'Return through the middle and rotate to the other side.',
+      'Each side counts as one rep. Lift your feet only once this feels easy.',
+    ],
+  },
+  'hanging-knee-raise': {
+    aliases: ['knee raise', 'hanging leg raise', 'knee ups', 'abs'],
+    steps: [
+      'Hang from a pull-up bar with straight arms and a still body.',
+      'Brace your stomach and press your shoulders down away from your ears.',
+      'Curl your hips up to bring your knees toward your chest.',
+      'Pause at the top without swinging.',
+      'Lower your legs slowly to a still hang before the next rep.',
+    ],
+  },
+  'pallof-press': {
+    aliases: ['pallof', 'anti-rotation press', 'core press'],
+    steps: [
+      'Anchor a band at chest height and stand side-on to it, holding the band at your chest.',
+      'Step away until the band is tight, feet about shoulder-width.',
+      'Brace your stomach and press the band straight out in front of you.',
+      'Hold for a second without letting your body twist toward the anchor.',
+      'Bring it back to your chest. Do all reps, then turn around and repeat.',
+    ],
+  },
+  'calf-raise': {
+    aliases: ['calf raises', 'calves', 'heel raise', 'toe raise'],
+    steps: [
+      'Stand tall with your feet hip-width apart, holding a wall or rail for balance.',
+      'Rise up onto the balls of your feet as high as you can.',
+      'Pause for a second at the top.',
+      'Lower your heels slowly back to the floor.',
+      'For more range, stand with your heels hanging off a step.',
+    ],
+  },
+  'single-leg-calf-raise': {
+    aliases: ['single leg calf raise', 'one leg calf raise', 'calves', 'calf'],
+    steps: [
+      'Stand on one foot, lightly holding a wall or rail for balance.',
+      'Lift the other foot off the floor behind you.',
+      'Rise up onto the ball of your standing foot as high as you can.',
+      'Pause, then lower your heel slowly.',
+      'Do all reps on one side, then switch.',
+    ],
+  },
 }
