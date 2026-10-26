@@ -194,12 +194,35 @@ export function expandUpcE(code: string): string {
 
 export const isPlausibleBarcode = (code: string) => /^\d{8}$|^\d{12,14}$/.test(code.replace(/\D/g, ''))
 
+/**
+ * True when the last digit of an 8-, 12-, 13- or 14-digit barcode is the correct GS1 check digit,
+ * so a typed number with one wrong or swapped digit is caught before it's looked up. A valid
+ * check digit doesn't mean the product is right, so scanned products are still confirmed by the user.
+ */
+export function hasValidCheckDigit(code: string): boolean {
+  const d = code.replace(/\D/g, '')
+  if (!isPlausibleBarcode(d)) return false
+  const body = d.slice(0, -1)
+  let sum = 0
+  for (let i = 0; i < body.length; i++) {
+    // Weights alternate 3, 1, 3, … counting from the digit next to the check digit.
+    const fromRight = body.length - 1 - i
+    sum += Number(body[i]) * (fromRight % 2 === 0 ? 3 : 1)
+  }
+  return (10 - (sum % 10)) % 10 === Number(d[d.length - 1])
+}
+
 // ----- Open Food Facts -----
 
 export interface ParsedProduct {
   name: string
   servingSize: string
   nutrition: Nutrition | null
+  /**
+   * The product lists nutrition per 100 g but no serving size, so `nutrition` is per 100 g and
+   * the user must enter how much they ate (100 g of something like Nutella is about 7 servings).
+   */
+  per100gOnly?: boolean
 }
 
 type OffNutriments = Record<string, number | string | undefined>
@@ -244,6 +267,36 @@ export function parseOffProduct(product: Record<string, unknown> | undefined | n
   if (per100 && servingGrams && servingGrams > 0) {
     return { name: displayName, servingSize: servingLabel ?? `${servingGrams} g`, nutrition: scaleNutrition(per100, servingGrams / 100) }
   }
-  if (per100) return { name: displayName, servingSize: '100 g', nutrition: per100 }
+  if (per100) return { name: displayName, servingSize: '100 g', nutrition: per100, per100gOnly: true }
   return { name: displayName, servingSize: servingLabel ?? '1 serving', nutrition: null }
+}
+
+// ----- Manual entry checks -----
+
+/** Calories implied by protein, carbs and fat (4, 4 and 9 kcal per gram). */
+export const caloriesFromMacros = (n: Pick<Nutrition, 'proteinG' | 'carbsG' | 'fatG'>) => 4 * n.proteinG + 4 * n.carbsG + 9 * n.fatG
+
+/** Above this, one serving is more than most whole meals, so a typo is likely. */
+export const MANUAL_CALORIE_WARN = 2000
+
+const kcal = (n: number) => Math.round(n).toLocaleString('en-US')
+
+/**
+ * Warnings for a manually entered food whose numbers don't add up, to catch typos like 50,000
+ * calories. They never block saving: the user can check the label and save anyway.
+ */
+export function manualEntryWarnings(n: Pick<Nutrition, 'calories' | 'proteinG' | 'carbsG' | 'fatG'>): string[] {
+  const warnings: string[] = []
+  if (n.calories > MANUAL_CALORIE_WARN) {
+    warnings.push(`${kcal(n.calories)} calories is more than most whole meals. Check the label, and make sure you entered one serving.`)
+  }
+  const fromMacros = caloriesFromMacros(n)
+  if (fromMacros > 0) {
+    const gap = Math.abs(n.calories - fromMacros)
+    // Labels round, and fiber and alcohol shift totals, so allow a generous margin.
+    if (gap > Math.max(40, 0.25 * Math.max(n.calories, fromMacros))) {
+      warnings.push(`The protein, carbs and fat you entered add up to about ${kcal(fromMacros)} calories, not ${kcal(n.calories)}. Check for a typo.`)
+    }
+  }
+  return warnings
 }

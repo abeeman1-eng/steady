@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import usda from '../data/seed/usdaFoods.json'
 import { prettyFoodName, searchUsdaFoods } from './foodSearch'
-import { defaultServingIndex, expandUpcE, mealForTime, normalizeBarcode, nutritionForGrams, parseOffProduct, scaleNutrition, sumNutrition, usdaPer100g, usdaServingOptions, type UsdaFood } from './nutrition'
+import { defaultServingIndex, expandUpcE, hasValidCheckDigit, manualEntryWarnings, mealForTime, normalizeBarcode, nutritionForGrams, parseOffProduct, scaleNutrition, sumNutrition, usdaPer100g, usdaServingOptions, type UsdaFood } from './nutrition'
 
 const foods = usda.foods as UsdaFood[]
 const top = (q: string) => searchUsdaFoods(q, foods, 1)[0]?.[1]
@@ -150,7 +150,16 @@ describe('parseOffProduct', () => {
   it('falls back to 100 g, and converts kJ when kcal is missing', () => {
     const p = parseOffProduct({ product_name: 'Juice', nutriments: { energy_100g: 184 } })
     expect(p?.servingSize).toBe('100 g')
+    expect(p?.per100gOnly).toBe(true)
     expect(Math.round(p!.nutrition!.calories)).toBe(44)
+  })
+
+  it('only flags products with no serving size as per-100 g (tester bug: Nutella logged as 100 g)', () => {
+    const labelled = parseOffProduct({ product_name: 'Bar', serving_size: '1 bar (40 g)', nutriments: { 'energy-kcal_serving': 200 } })
+    expect(labelled?.per100gOnly).toBeUndefined()
+    const scaled = parseOffProduct({ product_name: 'Spread', serving_quantity: 37, nutriments: { 'energy-kcal_100g': 539 } })
+    expect(scaled?.per100gOnly).toBeUndefined()
+    expect(Math.round(scaled!.nutrition!.calories)).toBe(199)
   })
 
   it('flags missing nutrition so the user can enter it', () => {
@@ -196,5 +205,37 @@ describe('defaultServingIndex', () => {
     expect(defaultFor('Pancakes, plain')).toMatch(/^1 medium pancake/)
     expect(defaultFor('Pizza, cheese, from restaurant or fast food, medium crust')).toMatch(/^1 piece/)
     expect(defaultFor('Potato, french fries, NFS')).toMatch(/^1 cup/)
+  })
+})
+
+describe('barcode check digits (tester bug: a mistyped barcode matched a real product)', () => {
+  it('accepts real EAN-13, UPC-A and EAN-8 codes', () => {
+    expect(hasValidCheckDigit('3017620422003')).toBe(true) // Nutella
+    expect(hasValidCheckDigit('049000028911')).toBe(true) // UPC-A
+    expect(hasValidCheckDigit('96385074')).toBe(true) // EAN-8
+  })
+
+  it('rejects a code with one wrong digit, and codes of the wrong length', () => {
+    expect(hasValidCheckDigit('3017620422004')).toBe(false)
+    expect(hasValidCheckDigit('96385075')).toBe(false)
+    expect(hasValidCheckDigit('12345')).toBe(false)
+  })
+
+  it('cannot tell a made-up code with a valid check digit, which is why products are confirmed', () => {
+    expect(hasValidCheckDigit('1234567890128')).toBe(true)
+  })
+})
+
+describe('manual entry warnings (tester bug: 50,000 calories saved without a warning)', () => {
+  it('warns about huge calories and calories that do not match the macros', () => {
+    expect(manualEntryWarnings({ calories: 50000, proteinG: 10, carbsG: 0, fatG: 0 })).toHaveLength(2)
+    expect(manualEntryWarnings({ calories: 1500, proteinG: 10, carbsG: 20, fatG: 8 })).toHaveLength(1)
+  })
+
+  it('stays quiet for normal labels and for entries with calories only', () => {
+    expect(manualEntryWarnings({ calories: 200, proteinG: 10, carbsG: 20, fatG: 8 })).toEqual([])
+    expect(manualEntryWarnings({ calories: 150, proteinG: 0, carbsG: 39, fatG: 0 })).toEqual([])
+    expect(manualEntryWarnings({ calories: 90, proteinG: 0, carbsG: 0, fatG: 0 })).toEqual([])
+    expect(manualEntryWarnings({ calories: 0, proteinG: 0, carbsG: 0, fatG: 0 })).toEqual([])
   })
 })

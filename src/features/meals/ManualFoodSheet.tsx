@@ -2,7 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Sheet } from '../../components/Sheet'
 import { Button, Field, inputClass } from '../../components/ui'
 import { logFood, upsertFood } from '../../data/repositories/mealRepo'
-import { type MealType, MEAL_TYPES } from '../../domain/nutrition'
+import { type MealType, MEAL_TYPES, manualEntryWarnings } from '../../domain/nutrition'
 
 /**
  * Manual entry: always available, and where a scan lands when a product isn't found or has no
@@ -27,7 +27,12 @@ export function ManualFoodSheet({
 }) {
   const [f, setF] = useState({ name: initialName, servingSize: '1 serving', calories: '', proteinG: '', carbsG: '', fatG: '', fiberG: '', sugarG: '', satFatG: '', sodiumMg: '', barcode: barcode ?? '' })
   const [saving, setSaving] = useState(false)
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
+  /** The warnings the user has already seen; saving again with the same numbers means "save anyway". */
+  const [shownWarnings, setShownWarnings] = useState<string[]>([])
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => {
+    setF((s) => ({ ...s, [k]: e.target.value }))
+    setShownWarnings([])
+  }
   const n = (v: string) => Math.max(0, parseFloat(v) || 0)
   // Extras stay undefined when left blank, so the log shows them as not listed rather than 0.
   const opt = (v: string) => (v.trim() === '' || !Number.isFinite(parseFloat(v)) ? undefined : Math.max(0, parseFloat(v)))
@@ -36,6 +41,11 @@ export function ManualFoodSheet({
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!valid) return
+    const warnings = manualEntryWarnings({ calories: n(f.calories), proteinG: n(f.proteinG), carbsG: n(f.carbsG), fatG: n(f.fatG) })
+    if (warnings.length > 0 && shownWarnings.length === 0) {
+      setShownWarnings(warnings)
+      return
+    }
     setSaving(true)
     try {
       const foodId = await upsertFood({
@@ -95,8 +105,19 @@ export function ManualFoodSheet({
         <Field label="Barcode (optional)">
           <input className={inputClass} inputMode="numeric" value={f.barcode} onChange={set('barcode')} />
         </Field>
+        {shownWarnings.length > 0 && (
+          <div className="rounded-2xl bg-surface-2 p-3 text-[14px] ring-1 ring-danger ring-inset" role="alert">
+            <p className="font-semibold">Check these numbers</p>
+            <ul className="mt-1 list-disc pl-5">
+              {shownWarnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+            <p className="mt-1 text-muted">Fix them above, or save anyway if they match the label.</p>
+          </div>
+        )}
         <Button type="submit" block disabled={!valid || saving}>
-          {saving ? 'Saving…' : `Save and add to ${MEAL_TYPES.find((m) => m.value === mealType)!.label}`}
+          {saving ? 'Saving…' : shownWarnings.length > 0 ? 'Save anyway' : `Save and add to ${MEAL_TYPES.find((m) => m.value === mealType)!.label}`}
         </Button>
       </form>
     </Sheet>

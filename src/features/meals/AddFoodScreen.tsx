@@ -7,7 +7,7 @@ import { LookupError, loadUsdaFoods, lookupBarcodeOnline, searchPackagedOnline, 
 import { findFoodByBarcode, listFavoriteFoods, listRecentFoods, listSavedMeals, logSavedMeal, searchMyFoods, deleteSavedMeal } from '../../data/repositories/mealRepo'
 import type { FoodRecord } from '../../data/schema'
 import { todayISO } from '../../domain/dates'
-import { type MealType, MEAL_TYPES, type Nutrition, type UsdaFood, defaultServingIndex, formatCalories, isPlausibleBarcode, mealForTime, nutritionForGrams, usdaPer100g, usdaServingOptions } from '../../domain/nutrition'
+import { type MealType, MEAL_TYPES, type Nutrition, type UsdaFood, defaultServingIndex, formatCalories, hasValidCheckDigit, isPlausibleBarcode, mealForTime, nutritionForGrams, usdaPer100g, usdaServingOptions } from '../../domain/nutrition'
 import { vibrate } from '../../lib/alerts'
 import { FoodConfirmSheet, type FoodCandidate } from './FoodConfirmSheet'
 import { ManualFoodSheet } from './ManualFoodSheet'
@@ -83,6 +83,9 @@ export function AddFoodScreen() {
   }
 
   const mealLabel = MEAL_TYPES.find((m) => m.value === meal)!.label
+  // A product found by barcode can be the wrong one (Open Food Facts is crowd-sourced), so the
+  // confirm sheet offers "Not my product", which opens manual entry for that barcode.
+  const wrongProductBarcode = overlay?.kind === 'confirm' && overlay.candidate.kind === 'product' ? overlay.candidate.barcode : undefined
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28">
@@ -153,7 +156,25 @@ export function AddFoodScreen() {
         </p>
       </div>
 
-      {overlay?.kind === 'confirm' && <FoodConfirmSheet candidate={overlay.candidate} mealType={meal} date={date} onDone={done} onClose={() => setOverlay(null)} />}
+      {overlay?.kind === 'confirm' && (
+        <FoodConfirmSheet
+          candidate={overlay.candidate}
+          mealType={meal}
+          date={date}
+          onDone={done}
+          onClose={() => setOverlay(null)}
+          onWrongProduct={
+            wrongProductBarcode
+              ? () =>
+                  setOverlay({
+                    kind: 'manual',
+                    barcode: wrongProductBarcode,
+                    notice: 'Enter this product from its label. Steady will use your entry the next time you scan this barcode.',
+                  })
+              : undefined
+          }
+        />
+      )}
       {overlay?.kind === 'manual' && (
         <ManualFoodSheet mealType={meal} date={date} barcode={overlay.barcode} initialName={overlay.name} notice={overlay.notice} onDone={done} onClose={() => setOverlay(null)} />
       )}
@@ -334,7 +355,8 @@ function FoodList({ items }: { items: { key: string; name: string; detail: strin
 
 function TypeBarcodeSheet({ onSubmit, onClose }: { onSubmit: (code: string) => void; onClose: () => void }) {
   const [code, setCode] = useState('')
-  const valid = isPlausibleBarcode(code)
+  const plausible = isPlausibleBarcode(code)
+  const valid = plausible && hasValidCheckDigit(code)
   return (
     <Sheet title="Type barcode" onClose={onClose}>
       <form
@@ -346,6 +368,11 @@ function TypeBarcodeSheet({ onSubmit, onClose }: { onSubmit: (code: string) => v
       >
         <p className="text-sm text-muted">Enter the numbers under the barcode (8, 12 or 13 digits).</p>
         <input className={inputClass} inputMode="numeric" autoComplete="off" aria-label="Barcode number" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. 0123456789012" />
+        {plausible && !valid && (
+          <p className="text-sm text-danger" role="alert">
+            That number doesn’t check out. One digit may be off, so compare it with the package.
+          </p>
+        )}
         <Button type="submit" block disabled={!valid}>
           Look up
         </Button>
