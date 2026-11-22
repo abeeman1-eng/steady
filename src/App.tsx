@@ -1,32 +1,29 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Suspense, lazy } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { RestTimerBanner, RestTimerHost } from './components/RestTimerHost'
 import { TabBar } from './components/TabBar'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { getProfile } from './data/repositories/profileRepo'
+import { ExerciseDetailScreen } from './features/exercises/ExerciseDetailScreen'
+import { ExerciseGuideScreen } from './features/exercises/ExerciseGuideScreen'
+import { HistoryScreen } from './features/history/HistoryScreen'
+import { WorkoutDetailScreen } from './features/history/WorkoutDetailScreen'
+import { AddFoodScreen } from './features/meals/AddFoodScreen'
+import { HealthScreen } from './features/meals/HealthScreen'
+import { MealIdeasScreen } from './features/meals/MealIdeasScreen'
+import { MealsScreen } from './features/meals/MealsScreen'
+import { PlanBuilderScreen } from './features/meals/PlanBuilderScreen'
+import { TargetsScreen } from './features/meals/TargetsScreen'
 import { OnboardingScreen } from './features/onboarding/OnboardingScreen'
+import { PlanPrintScreen } from './features/plan/PlanPrintScreen'
+import { PlanScreen } from './features/plan/PlanScreen'
+import { ProgressScreen } from './features/progress/ProgressScreen'
+import { LogRunScreen } from './features/running/LogRunScreen'
+import { FinishScreen } from './features/session/FinishScreen'
+import { SessionScreen } from './features/session/SessionScreen'
+import { SettingsScreen } from './features/settings/SettingsScreen'
 import { TodayScreen } from './features/today/TodayScreen'
 import { ProfileContext } from './lib/profileContext'
-
-// Code-split by page so a first visit on a slow connection downloads only what it needs.
-const ExerciseDetailScreen = lazy(() => import('./features/exercises/ExerciseDetailScreen').then((m) => ({ default: m.ExerciseDetailScreen })))
-const ExerciseGuideScreen = lazy(() => import('./features/exercises/ExerciseGuideScreen').then((m) => ({ default: m.ExerciseGuideScreen })))
-const HistoryScreen = lazy(() => import('./features/history/HistoryScreen').then((m) => ({ default: m.HistoryScreen })))
-const WorkoutDetailScreen = lazy(() => import('./features/history/WorkoutDetailScreen').then((m) => ({ default: m.WorkoutDetailScreen })))
-const AddFoodScreen = lazy(() => import('./features/meals/AddFoodScreen').then((m) => ({ default: m.AddFoodScreen })))
-const HealthScreen = lazy(() => import('./features/meals/HealthScreen').then((m) => ({ default: m.HealthScreen })))
-const MealIdeasScreen = lazy(() => import('./features/meals/MealIdeasScreen').then((m) => ({ default: m.MealIdeasScreen })))
-const MealsScreen = lazy(() => import('./features/meals/MealsScreen').then((m) => ({ default: m.MealsScreen })))
-const PlanBuilderScreen = lazy(() => import('./features/meals/PlanBuilderScreen').then((m) => ({ default: m.PlanBuilderScreen })))
-const TargetsScreen = lazy(() => import('./features/meals/TargetsScreen').then((m) => ({ default: m.TargetsScreen })))
-const PlanScreen = lazy(() => import('./features/plan/PlanScreen').then((m) => ({ default: m.PlanScreen })))
-const ProgressScreen = lazy(() => import('./features/progress/ProgressScreen').then((m) => ({ default: m.ProgressScreen })))
-const LogRunScreen = lazy(() => import('./features/running/LogRunScreen').then((m) => ({ default: m.LogRunScreen })))
-const FinishScreen = lazy(() => import('./features/session/FinishScreen').then((m) => ({ default: m.FinishScreen })))
-const SessionScreen = lazy(() => import('./features/session/SessionScreen').then((m) => ({ default: m.SessionScreen })))
-const SettingsScreen = lazy(() => import('./features/settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen })))
-const PlanPrintScreen = lazy(() => import('./features/plan/PlanPrintScreen').then((m) => ({ default: m.PlanPrintScreen })))
 
 /** Sends new users to onboarding and provides the profile to everything else. */
 function OnboardedGate() {
@@ -55,7 +52,6 @@ function TabLayout() {
 export default function App() {
   return (
     <>
-      <Suspense fallback={null}>
       <Routes>
         <Route path="/onboarding" element={<OnboardingScreen />} />
         <Route element={<OnboardedGate />}>
@@ -82,7 +78,6 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      </Suspense>
       <UpdatePrompt />
     </>
   )
