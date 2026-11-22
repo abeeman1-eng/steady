@@ -62,6 +62,7 @@ for display. Dates are local `YYYY-MM-DD` strings. To change the schema, add a n
 - Weight-loss and general goals get a mixed plan of strength days plus easy cardio. A running goal without a date gets easy run/walk days; with a date it gets a full running plan (below).
 - The first time an exercise is logged sets a baseline. PRs are counted against every earlier completed set, including earlier sets in the same workout.
 - The PWA update prompt waits for the user to tap Reload, so an update never interrupts a workout.
+- **Nothing in a workout is lost when you leave it (v1.1.1, from peer feedback).** Sets save to the device as you type. The rest timer (`src/lib/restTimer.ts`) is saved with its end time, so it survives a refresh, switching screens and closing the app; a timer that ran out while the app was closed ends quietly. While you're on another screen, a rest bar above the tab bar shows the countdown, plays the chime when rest ends and links back to the workout. Settings has a "Back up or move your data" shortcut to Export/Import at the top.
 
 ### Exercises tab and video demos
 

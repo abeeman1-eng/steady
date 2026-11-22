@@ -20,6 +20,13 @@ export function SettingsScreen() {
 
   return (
     <Screen title="Settings">
+      <ListGroup>
+        <ListRow
+          title="Back up or move your data"
+          subtitle={`Export a file to keep or open on another phone. Last backup: ${profile.lastBackupAt ? new Date(profile.lastBackupAt).toLocaleDateString() : 'never'}`}
+          onClick={() => document.getElementById('your-data')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        />
+      </ListGroup>
       <section className="flex flex-col gap-2">
         <SectionTitle>Training</SectionTitle>
         <Card className="flex flex-col gap-3">
@@ -96,7 +103,7 @@ export function SettingsScreen() {
         <MealsSection />
       </section>
 
-      <section className="flex flex-col gap-2">
+      <section id="your-data" className="flex scroll-mt-4 flex-col gap-2">
         <SectionTitle>Your data</SectionTitle>
         <DataSection />
       </section>

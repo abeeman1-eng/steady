@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { RestTimerBanner, RestTimerHost } from './components/RestTimerHost'
 import { TabBar } from './components/TabBar'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { getProfile } from './data/repositories/profileRepo'
@@ -31,6 +32,7 @@ function OnboardedGate() {
   if (profile === null) return <Navigate to="/onboarding" replace state={{ from: location.pathname }} />
   return (
     <ProfileContext.Provider value={profile}>
+      <RestTimerHost />
       <Outlet />
     </ProfileContext.Provider>
   )
@@ -40,6 +42,7 @@ function TabLayout() {
   return (
     <>
       <Outlet />
+      <RestTimerBanner />
       <TabBar />
     </>
   )

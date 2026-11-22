@@ -19,7 +19,7 @@ export function SessionScreen() {
   const profile = useProfile()
   const workout = useLiveQuery(() => getWorkout(workoutId), [workoutId])
   const sets = useLiveQuery(() => getSetsForWorkout(workoutId), [workoutId])
-  const timer = useRestTimer(workoutId, profile.restTimerAlerts)
+  const timer = useRestTimer(workoutId)
   const [picker, setPicker] = useState<PickerState>(null)
 
   if (workout === undefined || sets === undefined) return null
