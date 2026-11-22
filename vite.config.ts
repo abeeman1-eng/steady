@@ -37,6 +37,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: `${base}index.html`,
+        // Files linked directly (the demo video) must load as themselves, not as the app.
+        navigateFallbackDenylist: [/\/demo\//, /\.(mp4|pdf)$/],
         // Above Workbox's 2 MB default so the food list is always cached for offline search.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
