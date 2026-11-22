@@ -13,7 +13,8 @@ const EXEMPT = new Set(['/onboarding', '*'])
 const routes = [...app.matchAll(/<Route\s+path="([^"]+)"\s+element=\{<(\w+)\s*\/>\}/g)].map(([, path, component]) => ({ path, component }))
 
 function sourceOf(component: string): string {
-  const rel = app.match(new RegExp(`import \\{ ${component} \\} from '\\./([^']+)'`))?.[1]
+  // Screens are imported directly (Today, onboarding) or lazily: lazy(() => import('./features/…')).
+  const rel = (app.match(new RegExp(`import \\{ ${component} \\} from '\\./([^']+)'`)) ?? app.match(new RegExp(`const ${component} = lazy\\(\\(\\) => import\\('\\./([^']+)'\\)`)))?.[1]
   const source = rel ? SOURCES[`./${rel}.tsx`] : undefined
   if (!source) throw new Error(`Couldn't find the source file for ${component}`)
   return source

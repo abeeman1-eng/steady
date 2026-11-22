@@ -56,7 +56,7 @@ export function RestTimerBanner() {
   const pct = timer ? (left / timer.totalSec) * 100 : 0
 
   return (
-    <div className="fixed inset-x-0 bottom-[calc(59px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-surface">
+    <div className="fixed inset-x-0 bottom-[calc(59px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-surface print:hidden">
       <div className="h-1 bg-surface-2">
         <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>

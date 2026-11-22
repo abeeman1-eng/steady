@@ -10,7 +10,7 @@ export function UpdatePrompt() {
 
   if (!needRefresh) return null
   return (
-    <div role="status" className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-40 mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-border bg-surface-2 p-3 shadow-lg">
+    <div role="status" data-update-prompt className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-40 mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-border bg-surface-2 p-3 shadow-lg">
       <p className="flex-1 text-sm">A new version of Steady is ready.</p>
       <Button variant="ghost" onClick={() => setNeedRefresh(false)}>
         Later

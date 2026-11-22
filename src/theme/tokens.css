@@ -28,3 +28,24 @@
   --carbs: #d95926;
   --fat: #199e70;
 }
+
+/* Printing (the printable plan): black on white, and no app chrome. */
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #fff;
+    --surface: #fff;
+    --surface-2: #f2f3f5;
+    --surface-3: #e6e8eb;
+    --border: #d0d4da;
+    --border-strong: #b5bbc4;
+    --text: #000;
+    --muted: #3b4048;
+    --subtle: #555b64;
+    --accent: #0a6b45;
+  }
+  nav[aria-label='Main'],
+  [data-update-prompt] {
+    display: none !important;
+  }
+}

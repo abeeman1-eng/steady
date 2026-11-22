@@ -24,6 +24,7 @@ export function PlanScreen() {
     >
       <ListGroup>
         <ListRow title="Log a run" subtitle="Distance, time and how it felt" to="/runs/log" />
+        {plan && <ListRow title="Print or add to calendar" subtitle="Save a PDF, print it, or add sessions to your phone’s calendar" to="/plan/print" />}
       </ListGroup>
       {plan === null && (
         <Card>
