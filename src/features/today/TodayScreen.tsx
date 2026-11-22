@@ -7,7 +7,7 @@ import { getEntriesForDate } from '../../data/repositories/mealRepo'
 import { ensurePlannedSessions, getActivePlan, getNextPlanned, getPlannedBetween, getPlannedForDate, markMissedSessions } from '../../data/repositories/planRepo'
 import { updateProfile } from '../../data/repositories/profileRepo'
 import { getMostRecentPR } from '../../data/repositories/recordsRepo'
-import { getInProgressWorkout, listCompletedBetween, startFreeWorkout, startPlannedWorkout } from '../../data/repositories/workoutRepo'
+import { getInProgressWorkout, hasCompletedWorkout, listCompletedBetween, startFreeWorkout, startPlannedWorkout } from '../../data/repositories/workoutRepo'
 import { needsBackupReminder } from '../../domain/backupReminder'
 import { addDays, daysBetween, formatDate, startOfWeek, todayISO } from '../../domain/dates'
 import { EXERCISES_BY_ID } from '../../domain/exerciseLibrary'
@@ -39,6 +39,7 @@ export function TodayScreen() {
   const nextPlanned = useLiveQuery(() => getNextPlanned(today), [today])
   const recentPR = useLiveQuery(() => getMostRecentPR(addDays(today, -14)), [today])
   const plan = useLiveQuery(getActivePlan)
+  const everTrained = useLiveQuery(hasCompletedWorkout)
   const raceDaysLeft = plan?.type === 'running' && plan.goalDate ? daysBetween(today, plan.goalDate) : undefined
 
   async function start(fn: () => Promise<string>) {
@@ -82,18 +83,24 @@ export function TodayScreen() {
         ) : planned ? (
           <HeroCard eyebrow={`Today’s session${planned.optional ? ' · optional' : ''}`} title={planned.name}>
             {planned.targets.kind === 'strength' ? (
-              <ol className="mt-4 flex flex-col">
-                {planned.targets.exercises.map((t, i) => {
-                  const ex = EXERCISES_BY_ID.get(t.exerciseId)
-                  return (
-                    <li key={t.exerciseId} className="flex items-center gap-3 border-t border-border py-2.5 first:border-t-0">
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-3 text-[12px] font-semibold text-muted">{i + 1}</span>
-                      <span className="min-w-0 flex-1 truncate text-[15px]">{ex?.name}</span>
-                      <span className="shrink-0 text-[13px] text-muted tabular-nums">{formatSetTarget(t.sets, t.repMin, t.repMax, ex?.timed)}</span>
-                    </li>
-                  )
-                })}
-              </ol>
+              <>
+                <p className="mt-1 text-[13px] text-muted">Tap an exercise for step-by-step instructions and a short video.</p>
+                <ol className="mt-3 flex flex-col">
+                  {planned.targets.exercises.map((t, i) => {
+                    const ex = EXERCISES_BY_ID.get(t.exerciseId)
+                    return (
+                      <li key={t.exerciseId} className="border-t border-border first:border-t-0">
+                        <Link to={`/exercises/${t.exerciseId}`} className="flex min-h-11 items-center gap-3 py-1.5" aria-label={`${ex?.name}, ${formatSetTarget(t.sets, t.repMin, t.repMax, ex?.timed)}. How to do it`}>
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-3 text-[12px] font-semibold text-muted">{i + 1}</span>
+                          <span className="min-w-0 flex-1 truncate text-[15px]">{ex?.name}</span>
+                          <span className="shrink-0 text-[13px] text-muted tabular-nums">{formatSetTarget(t.sets, t.repMin, t.repMax, ex?.timed)}</span>
+                          <Chevron />
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </>
             ) : planned.targets.kind === 'run' ? (
               <RunTargetDetails target={planned.targets} units={profile.units} />
             ) : (
@@ -120,6 +127,24 @@ export function TodayScreen() {
                 Log a run
               </ButtonLink>
             </div>
+          </HeroCard>
+        ) : everTrained === false && nextPlanned ? (
+          // Brand-new user on a rest day (e.g. signed up on a Sunday): offer the first session now.
+          // Doing it early moves that session to today, so nothing doubles up and rest days still follow.
+          <HeroCard eyebrow="Your first workout" accent title={`Ready to start ${nextPlanned.name}?`}>
+            <p className="mt-2 text-[15px] text-muted">
+              It’s planned for {nextPlanned.date === addDays(today, 1) ? 'tomorrow' : formatDate(nextPlanned.date, { weekday: 'long' })}, but you can do it today. Your plan carries on from there.
+            </p>
+            {nextPlanned.targets.kind === 'run' ? (
+              <ButtonLink to={`/runs/log?session=${nextPlanned.id}`} className="mt-5 w-full">
+                Log your first run today
+              </ButtonLink>
+            ) : (
+              <Button block className="mt-5" onClick={() => start(() => startPlannedWorkout(nextPlanned.id))} disabled={starting}>
+                Start {nextPlanned.name} today
+              </Button>
+            )}
+            <p className="mt-3 text-[13px] text-muted">Or rest today and start {nextPlanned.date === addDays(today, 1) ? 'tomorrow' : 'then'}. Either is fine.</p>
           </HeroCard>
         ) : (
           <HeroCard eyebrow="Rest day" title="Recovery is part of the plan">

@@ -31,6 +31,23 @@ export async function runsByWorkout(): Promise<Map<string, RunRecord>> {
   return new Map((await db.runs.toArray()).map((r) => [r.workoutId, r]))
 }
 
+/** True once any workout or run has been finished (used for the first-workout offer on Today). */
+export async function hasCompletedWorkout(): Promise<boolean> {
+  return (await db.workouts.where('status').equals('completed').count()) > 0
+}
+
+/**
+ * A planned session done on a different day (started early, or logged late) moves to the day it
+ * was actually done, so it doesn't show up again on its old date. It stays put if that day
+ * already has another session from the plan.
+ */
+async function moveSessionToDate(sessionId: string, date: string): Promise<void> {
+  const session = await db.plannedSessions.get(sessionId)
+  if (!session || session.date === date) return
+  const clash = await db.plannedSessions.where('[planId+date]').equals([session.planId, date]).filter((s) => s.id !== sessionId).count()
+  if (!clash) await db.plannedSessions.update(sessionId, touch({ date }))
+}
+
 export async function listCompletedBetween(from: string, to: string): Promise<WorkoutRecord[]> {
   return db.workouts
     .where('date')
@@ -244,7 +261,10 @@ export async function finishWorkout(workoutId: string, fields: { difficulty?: nu
     const workout = await db.workouts.get(workoutId)
     if (!workout) return
     await db.workouts.update(workoutId, touch({ ...fields, status: 'completed' as const, finishedAt: new Date().toISOString() }))
-    if (workout.plannedSessionId) await db.plannedSessions.update(workout.plannedSessionId, touch({ status: 'done' as const }))
+    if (workout.plannedSessionId) {
+      await db.plannedSessions.update(workout.plannedSessionId, touch({ status: 'done' as const }))
+      await moveSessionToDate(workout.plannedSessionId, workout.date)
+    }
   })
 }
 
@@ -301,7 +321,10 @@ export async function logRun(log: RunLog): Promise<string> {
     })
     await db.workouts.add(workout)
     await db.runs.add(run)
-    if (planned) await db.plannedSessions.update(planned.id, touch({ status: 'done' as const }))
+    if (planned) {
+      await db.plannedSessions.update(planned.id, touch({ status: 'done' as const }))
+      await moveSessionToDate(planned.id, log.date)
+    }
     return workout.id
   })
 }

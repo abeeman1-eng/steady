@@ -210,6 +210,10 @@ function OnboardingFlow({ editing, initial }: { editing: boolean; initial: Draft
         {step === 'review' && plan && (
           <Question title="Here’s your plan">
             <PlanPreview plan={plan} units={draft.units ?? 'imperial'} />
+            <p className="rounded-2xl bg-surface-2 p-4 text-[14px]">
+              <span className="font-semibold">New to an exercise?</span> Every one has step-by-step instructions and a short video demo. Tap it on Today, in your plan or during a
+              workout, or search the Exercises tab.
+            </p>
             {error && (
               <p role="alert" className="text-danger">
                 {error}

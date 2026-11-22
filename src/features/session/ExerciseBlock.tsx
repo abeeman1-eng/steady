@@ -70,7 +70,7 @@ export function ExerciseBlock({
             ))}
           </ol>
           <Link to={`/exercises/${exercise.id}`} className="mt-2 inline-flex min-h-11 items-center text-accent">
-            Full guide and muscles worked ›
+            Video demo and full guide ›
           </Link>
         </div>
       )}

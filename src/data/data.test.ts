@@ -5,7 +5,7 @@ import { kgToLb, lbToKg } from '../domain/units'
 import { exportAll, importBackup, parseBackup } from './backup'
 import { db, migrateProfileToV2, TABLE_NAMES } from './db'
 import { ensureExerciseSeed } from './repositories/exerciseRepo'
-import { activatePlan, ensurePlannedSessions, getPlannedBetween, getPlannedForDate, markMissedSessions } from './repositories/planRepo'
+import { activatePlan, ensurePlannedSessions, getNextPlanned, getPlannedBetween, getPlannedForDate, markMissedSessions } from './repositories/planRepo'
 import { getProfile, saveOnboarding, setHealthFlags, updateProfile } from './repositories/profileRepo'
 import { findFoodByBarcode, getCached, getEntriesForDate, listRecentFoods, listSavedMeals, logFood, logSavedMeal, saveMealAsFavorite, setCached, upsertFood } from './repositories/mealRepo'
 import { listPersonalRecords } from './repositories/recordsRepo'
@@ -13,6 +13,7 @@ import {
   acceptSuggestion,
   deleteWorkout,
   getRunForWorkout,
+  hasCompletedWorkout,
   listRunsBetween,
   logRun,
   updateRun,
@@ -378,5 +379,35 @@ describe('running plans and runs', () => {
     await importBackup(backup)
     expect(await db.runs.count()).toBe(1)
     expect((await db.plans.toArray())[0].sessions?.length).toBeGreaterThan(20)
+  })
+})
+
+describe('first workout on a rest day (peer feedback: signed up on a Sunday with nothing to do)', () => {
+  afterAll(() => vi.setSystemTime(new Date(2026, 8, 28, 9)))
+
+  it('doing the next session early moves it to today, so it does not show up again', async () => {
+    await onboard() // Monday 28 Sep, 3-day plan: Mon, Wed, Fri
+    vi.setSystemTime(new Date(2026, 9, 4, 10)) // Sunday 4 Oct, a rest day
+    await ensurePlannedSessions()
+    expect(await hasCompletedWorkout()).toBe(false)
+    expect(await getPlannedForDate('2026-10-04')).toBeNull()
+    const next = (await getNextPlanned('2026-10-04'))!
+    expect(next.date).toBe('2026-10-05')
+
+    const id = await startPlannedWorkout(next.id)
+    await finishWorkout(id, { difficulty: 5 })
+    expect(await hasCompletedWorkout()).toBe(true)
+    expect(await db.plannedSessions.get(next.id)).toMatchObject({ date: '2026-10-04', status: 'done' })
+    expect(await getPlannedForDate('2026-10-05')).toBeNull() // Monday is now a rest day
+    expect((await getPlannedForDate('2026-10-07'))?.status).toBe('planned') // the rest of the plan is unchanged
+  })
+
+  it('discarding an early start leaves the session on its planned day', async () => {
+    await onboard()
+    vi.setSystemTime(new Date(2026, 9, 4, 10))
+    await ensurePlannedSessions()
+    const next = (await getNextPlanned('2026-10-04'))!
+    await discardWorkout(await startPlannedWorkout(next.id))
+    expect(await db.plannedSessions.get(next.id)).toMatchObject({ date: '2026-10-05', status: 'planned' })
   })
 })
