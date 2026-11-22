@@ -5,6 +5,7 @@ import { Button } from '../../components/ui'
 import { getActivePlan } from '../../data/repositories/planRepo'
 import { describeTargets } from '../../domain/calendar'
 import { WEEKDAY_NAMES, WEEKDAY_SHORT, formatDate, todayISO, weekdayOf } from '../../domain/dates'
+import { shortFirstWeek } from '../../domain/runningPlan'
 import { formatDistance } from '../../domain/units'
 import { useProfile } from '../../lib/profileContext'
 import { downloadPlanCalendar } from './exportPlan'
@@ -19,6 +20,7 @@ export function PlanPrintScreen() {
   const [added, setAdded] = useState<number | null>(null)
   const today = todayISO()
   if (plan === undefined) return null
+  const short = plan?.sessions && plan.runWeeks ? shortFirstWeek(plan.sessions, plan.runWeeks) : null
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-16 print:max-w-none print:p-0">
@@ -66,7 +68,10 @@ export function PlanPrintScreen() {
                   <section key={w.start} className="break-inside-avoid">
                     <h2 className="text-[17px] font-semibold">
                       Week of {formatDate(w.start, { month: 'short', day: 'numeric' })}{' '}
-                      <span className="font-normal text-muted">· {formatDistance(w.distanceM, units)}</span>
+                      <span className="font-normal text-muted">
+                        · {formatDistance(w.distanceM, units)}
+                        {short && w.start === plan.runWeeks![0].start && ` · short first week (${short.runs} of ${short.usual} runs)`}
+                      </span>
                     </h2>
                     <table className="mt-1 w-full text-left text-[14px]">
                       <tbody>

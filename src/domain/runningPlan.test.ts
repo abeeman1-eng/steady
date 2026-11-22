@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, daysBetween, weekdayOf } from './dates'
 import { generatePlan } from './planGenerator'
-import { MAX_WEEKLY_INCREASE, MIN_WEEKS, RACE_DISTANCE_M, buildRunSchedule, checkRunningGoal, raceKindFor, runWalkFor, weeklyVolumes } from './runningPlan'
+import { MAX_WEEKLY_INCREASE, MIN_WEEKS, RACE_DISTANCE_M, buildRunSchedule, checkRunningGoal, raceKindFor, runWalkFor, shortFirstWeek, weeklyVolumes } from './runningPlan'
 import type { DatedSessionTemplate, ExperienceLevel, RunTarget } from './types'
 
 const TODAY = '2026-10-19' // a Monday
@@ -187,5 +187,21 @@ describe('generatePlan with a running goal', () => {
 
   it('falls back to easy run/walk days when there is no goal date', () => {
     expect(generatePlan({ ...base, goals: ['running'], daysPerWeek: 3 }).type).toBe('mixed')
+  })
+})
+
+describe('short first week (persona finding F2)', () => {
+  it('flags a plan that starts mid-week, so week 1 isn\'t read as a jump', () => {
+    const saturday = '2026-11-21'
+    const g = { label: '5K' as const, distanceM: 5000, date: addDays(saturday, 8 * 7) }
+    const { sessions, weeks } = buildRunSchedule({ goal: g, level: 'returning', runDays: 3, startDate: saturday })
+    expect(shortFirstWeek(sessions.map((s) => ({ ...s, type: 'running' as const })), weeks)).toEqual({ runs: 1, usual: 3 })
+  })
+
+  it('does not flag a plan that starts at the beginning of its first week', () => {
+    const sunday = '2026-11-22'
+    const g = { label: '5K' as const, distanceM: 5000, date: addDays(sunday, 8 * 7 + 6) }
+    const { sessions, weeks } = buildRunSchedule({ goal: g, level: 'returning', runDays: 3, startDate: sunday })
+    expect(shortFirstWeek(sessions.map((s) => ({ ...s, type: 'running' as const })), weeks)).toBeNull()
   })
 })

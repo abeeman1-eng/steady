@@ -245,9 +245,21 @@ async function evaluatePRs(setId: string): Promise<PRHit[]> {
 }
 
 export async function updateSet(setId: string, changes: { weightKg?: number | null; reps?: number }): Promise<void> {
+  const previousWeight = (await db.sets.get(setId))?.weightKg
   await db.sets.update(setId, touch(changes))
   const set = await db.sets.get(setId)
   if (set?.completed) await evaluatePRs(setId)
+  // With no history (a first workout), later sets start blank. A weight typed on one set fills the
+  // same exercise's later sets that aren't done and are still blank or still following this set
+  // (each keystroke saves, so "25" arrives as 2 then 25). A weight the user typed there is kept.
+  if (set && changes.weightKg != null) {
+    const later = await db.sets
+      .where('workoutId')
+      .equals(set.workoutId)
+      .filter((s) => s.order === set.order && s.setNumber > set.setNumber && !s.completed && (s.weightKg === null || (previousWeight != null && s.weightKg === previousWeight)))
+      .toArray()
+    for (const s of later) await db.sets.update(s.id, touch({ weightKg: changes.weightKg }))
+  }
 }
 
 /** Mark a set done or not done. Returns any PRs the set earned. */

@@ -411,3 +411,41 @@ describe('first workout on a rest day (peer feedback: signed up on a Sunday with
     expect(await db.plannedSessions.get(next.id)).toMatchObject({ date: '2026-10-05', status: 'planned' })
   })
 })
+
+describe('first-workout weights (persona finding F1)', () => {
+  it('fills a typed weight into the later blank sets of the same exercise only', async () => {
+    await onboard()
+    const id = await startFreeWorkout()
+    await addExercise(id, 'goblet-squat')
+    await addExercise(id, 'dumbbell-row')
+    const before = await getSetsForWorkout(id)
+    expect(before.every((s) => s.weightKg === null)).toBe(true) // no history yet
+    const squat = before.filter((s) => s.exerciseId === 'goblet-squat')
+    await updateSet(squat[0].id, { weightKg: 11.3 })
+    const after = await getSetsForWorkout(id)
+    expect(after.filter((s) => s.exerciseId === 'goblet-squat').map((s) => s.weightKg)).toEqual([11.3, 11.3, 11.3])
+    expect(after.filter((s) => s.exerciseId === 'dumbbell-row').every((s) => s.weightKg === null)).toBe(true)
+  })
+
+  it('follows the weight as it is typed one keystroke at a time', async () => {
+    await onboard()
+    const id = await startFreeWorkout()
+    await addExercise(id, 'goblet-squat')
+    const [s1] = await getSetsForWorkout(id)
+    await updateSet(s1.id, { weightKg: 2 }) // typing "2"
+    await updateSet(s1.id, { weightKg: 25 }) // then "25"
+    expect((await getSetsForWorkout(id)).map((s) => s.weightKg)).toEqual([25, 25, 25])
+  })
+
+  it('never overwrites a weight already entered or a set already done', async () => {
+    await onboard()
+    const id = await startFreeWorkout()
+    await addExercise(id, 'goblet-squat')
+    const [s1, s2, s3] = await getSetsForWorkout(id)
+    await updateSet(s3.id, { weightKg: 15 })
+    await setCompleted(s2.id, true)
+    await updateSet(s1.id, { weightKg: 10 })
+    const sets = await getSetsForWorkout(id)
+    expect(sets.map((s) => s.weightKg)).toEqual([10, null, 15])
+  })
+})

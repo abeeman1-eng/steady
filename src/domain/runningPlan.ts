@@ -284,3 +284,16 @@ function sessionName(type: RunType, runWalk: boolean): string {
   if (type === 'runWalk') return 'Run/walk'
   return 'Easy run'
 }
+
+/**
+ * When a plan starts mid-week, its first week has fewer runs than a normal week, so its distance
+ * looks like a big jump to week 2 even though the 10% rule holds on the plan's weekly targets.
+ * Returns the run counts so the overview can label it, or null for a normal first week.
+ */
+export function shortFirstWeek(sessions: Pick<DatedSessionTemplate, 'date' | 'type'>[], weeks: Pick<RunWeek, 'start' | 'end'>[]): { runs: number; usual: number } | null {
+  if (weeks.length < 2) return null
+  const runsIn = (w: Pick<RunWeek, 'start' | 'end'>) => sessions.filter((s) => s.type === 'running' && s.date >= w.start && s.date <= w.end).length
+  const runs = runsIn(weeks[0])
+  const usual = runsIn(weeks[1])
+  return runs < usual ? { runs, usual } : null
+}

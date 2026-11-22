@@ -1,6 +1,7 @@
 import type { PlannedSessionRecord } from '../../data/schema'
 import { WEEKDAY_SHORT, formatDate, weekdayOf } from '../../domain/dates'
 import type { DatedSessionTemplate, GeneratedPlan, RunPhase, Units } from '../../domain/types'
+import { shortFirstWeek } from '../../domain/runningPlan'
 import { formatDistance } from '../../domain/units'
 import { runTargetAmount } from './runLabels'
 
@@ -36,6 +37,7 @@ export function RunningPlanOverview({
   const weeks = plan.runWeeks ?? []
   const sessions = plan.sessions ?? []
   const openIndex = Math.max(0, openWeekOf ? weeks.findIndex((w) => w.start <= openWeekOf && openWeekOf <= w.end) : 0)
+  const short = shortFirstWeek(sessions, weeks)
   const statusFor = (s: DatedSessionTemplate) => statuses?.find((p) => p.date === s.date && p.name === s.name)?.status
 
   return (
@@ -54,6 +56,7 @@ export function RunningPlanOverview({
       <ol className="flex flex-col gap-2">
         {weeks.map((w, i) => {
           const inWeek = sessions.filter((s) => s.date >= w.start && s.date <= w.end)
+          const partial = i === 0 && short !== null
           const current = today !== undefined && w.start <= today && today <= w.end
           return (
             <li key={w.start}>
@@ -62,12 +65,12 @@ export function RunningPlanOverview({
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2 text-[15px] font-medium">
                       Week {i + 1}
-                      <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[12px] font-medium text-muted">{PHASE_LABEL[w.phase]}</span>
+                      <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[12px] font-medium text-muted">{partial ? 'Short first week' : PHASE_LABEL[w.phase]}</span>
                       {current && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium text-accent">This week</span>}
                     </span>
                     <span className="mt-0.5 block text-[13px] text-muted">
                       {formatDate(i === 0 && sessions[0] && sessions[0].date > w.start ? sessions[0].date : w.start, { month: 'short', day: 'numeric' })} · {formatDistance(w.distanceM, units)}
-                      {w.longRunM > 0 && ` · long run ${formatDistance(w.longRunM, units)}`}
+                      {partial ? ` (${short!.runs} of ${short!.usual} runs; the plan starts mid-week)` : w.longRunM > 0 && ` · long run ${formatDistance(w.longRunM, units)}`}
                     </span>
                   </span>
                   <span aria-hidden className="text-muted transition group-open:rotate-90">
